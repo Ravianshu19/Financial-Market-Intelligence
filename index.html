@@ -1,0 +1,1306 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Quantra — Financial Market Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="vendor/tailwind.js"></script>
+<script src="vendor/echarts.min.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        bg:       '#09090E',
+        panel:    '#0E0E15',
+        card:     '#14141C',
+        line:     '#1F1F2B',
+        muted:    '#7A7A8C',
+        ink:      '#E7E7F0',
+        primary:  '#4D9FFF',
+        secondary:'#00D4AA',
+        danger:   '#E05555',
+        amber:    '#F5A524'
+      },
+      fontFamily: {
+        display: ['"Bricolage Grotesque"','ui-sans-serif','system-ui'],
+        mono:    ['"DM Mono"','ui-monospace','SFMono-Regular']
+      }
+    }
+  }
+}
+</script>
+<style>
+  html,body{background:#09090E;color:#E7E7F0;font-family:"DM Mono",ui-monospace,monospace;}
+  .grid-bg{background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.04) 1px,transparent 0);background-size:22px 22px;}
+  .gradient-text{background:linear-gradient(120deg,#fff 0%,#4D9FFF 55%,#00D4AA 100%);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .ring-glow{box-shadow:0 0 0 1px #1F1F2B, 0 12px 60px -20px rgba(77,159,255,.35);}
+  .scroll-hide::-webkit-scrollbar{display:none}
+  .ticker{animation:tk 60s linear infinite}
+  @keyframes tk{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  .pulse-dot{position:relative}
+  .pulse-dot:after{content:"";position:absolute;inset:0;border-radius:9999px;background:inherit;animation:pulse 2s infinite;}
+  @keyframes pulse{0%{transform:scale(1);opacity:.6}100%{transform:scale(2.6);opacity:0}}
+  .chip{display:inline-flex;align-items:center;gap:.4rem;padding:.2rem .55rem;border-radius:999px;font-size:11px;letter-spacing:.04em;}
+  .hover-row:hover{background:rgba(77,159,255,.04)}
+  .divline > * + *{border-top:1px solid #1F1F2B}
+  .card{background:#14141C;border:1px solid #1F1F2B;border-radius:14px;}
+  .softgrad{background:radial-gradient(60% 80% at 20% 0%,rgba(77,159,255,.10),transparent 60%),radial-gradient(40% 60% at 100% 0%,rgba(0,212,170,.08),transparent 60%);}
+  .label{font-size:10px;letter-spacing:.18em;color:#7A7A8C;text-transform:uppercase}
+  .num{font-feature-settings:"tnum" 1,"ss01" 1}
+  .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.55rem .9rem;border-radius:10px;font-size:12px;border:1px solid #1F1F2B;background:#14141C}
+  .btn:hover{border-color:#2A2A3A}
+  .btn-primary{background:#4D9FFF;border-color:#4D9FFF;color:#0B0B12}
+  .btn-primary:hover{background:#6BB1FF}
+  .heat{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px}
+  .heat > div{aspect-ratio:1;border-radius:6px;display:flex;flex-direction:column;justify-content:space-between;padding:6px;font-size:10px}
+  .marquee{mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+  details[open] summary svg{transform:rotate(90deg)}
+  summary{list-style:none;cursor:pointer}
+  summary::-webkit-details-marker{display:none}
+  .shap-bar{height:8px;border-radius:4px}
+  .progress{height:6px;border-radius:999px;background:#1F1F2B;overflow:hidden}
+  .progress > i{display:block;height:100%;border-radius:999px}
+  .glow-blue{box-shadow:inset 0 0 0 1px rgba(77,159,255,.35),0 0 30px -10px rgba(77,159,255,.5)}
+</style>
+</head>
+<body class="min-h-screen grid-bg">
+
+<!-- TOPBAR -->
+<header class="sticky top-0 z-40 backdrop-blur bg-bg/80 border-b border-line">
+  <div class="max-w-[1480px] mx-auto px-6 h-14 flex items-center gap-6">
+    <a class="flex items-center gap-2" href="#">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 17 L9 11 L13 14 L21 6" stroke="#4D9FFF" stroke-width="2" stroke-linecap="round"/><circle cx="21" cy="6" r="2" fill="#00D4AA"/></svg>
+      <span class="font-display text-[17px] tracking-tight">Quantra<span class="text-primary">.</span></span>
+      <span class="chip ml-2 bg-line text-muted">v2.6 · alpha</span>
+    </a>
+    <nav class="hidden md:flex items-center gap-1 text-[12px] text-muted">
+      <a class="px-3 py-1.5 rounded-md text-ink bg-card border border-line" href="#">Dashboard</a>
+      <a class="px-3 py-1.5 rounded-md hover:text-ink" href="#markets">Markets</a>
+      <a class="px-3 py-1.5 rounded-md hover:text-ink" href="#analyst">AI Analyst</a>
+      <a class="px-3 py-1.5 rounded-md hover:text-ink" href="#portfolio">Portfolio</a>
+      <a class="px-3 py-1.5 rounded-md hover:text-ink" href="#mlops">MLOps</a>
+      <a class="px-3 py-1.5 rounded-md hover:text-ink" href="#">Docs</a>
+    </nav>
+    <div class="ml-auto flex items-center gap-3">
+      <div class="hidden md:flex items-center gap-2 bg-card border border-line rounded-md px-3 py-1.5 w-[280px]">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#7A7A8C" stroke-width="1.6"/><path d="m20 20-3-3" stroke="#7A7A8C" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <input placeholder="Search ticker, sector, filing…" class="bg-transparent outline-none flex-1 text-[12px] placeholder:text-muted" />
+        <span class="chip bg-line text-muted">⌘K</span>
+      </div>
+      <button class="btn"><span class="h-1.5 w-1.5 rounded-full bg-secondary pulse-dot"></span> Live</button>
+      <button class="btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5m6 0a3 3 0 1 1-6 0" stroke="#E7E7F0" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <span class="chip bg-danger/15 text-danger -ml-1">3</span>
+      </button>
+      <div class="flex items-center gap-2 pl-3 border-l border-line">
+        <div class="h-7 w-7 rounded-full bg-gradient-to-br from-primary to-secondary grid place-items-center text-[11px] text-bg font-bold">EM</div>
+        <div class="hidden md:block leading-tight">
+          <div class="text-[12px]">Elena Marais</div>
+          <div class="text-[10px] text-muted">Quant · Pro</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- TICKER -->
+<section class="border-b border-line bg-panel/60">
+  <div class="overflow-hidden marquee">
+    <div class="ticker whitespace-nowrap flex gap-8 py-2 text-[12px]" id="tickerStrip"></div>
+  </div>
+</section>
+
+<!-- LAYOUT -->
+<main class="max-w-[1480px] mx-auto px-6 py-6 grid grid-cols-12 gap-6">
+
+  <!-- SIDEBAR -->
+  <aside class="col-span-12 lg:col-span-2">
+    <div class="card p-3 sticky top-20 divline">
+      <div class="px-2 py-2 label">Workspace</div>
+      <nav class="text-[12px] divline">
+        <a href="#" class="flex items-center justify-between gap-2 px-2 py-2 rounded-md bg-primary/10 text-primary border border-primary/20">
+          <span class="flex items-center gap-2"><span class="h-1.5 w-1.5 rounded-full bg-primary"></span> Overview</span>
+        </a>
+        <a href="#markets"   class="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-line text-muted hover:text-ink">⌖ Markets</a>
+        <a href="#watchlist" class="flex items-center justify-between gap-2 px-2 py-2 rounded-md hover:bg-line text-muted hover:text-ink"><span>★ Watchlist</span><span class="chip bg-line">12</span></a>
+        <a href="#stock"     class="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-line text-muted hover:text-ink">≡ Stock Analysis</a>
+        <a href="#analyst"   class="flex items-center justify-between gap-2 px-2 py-2 rounded-md hover:bg-line text-muted hover:text-ink"><span>◇ AI Analyst</span><span class="chip bg-secondary/15 text-secondary">new</span></a>
+        <a href="#forecast"  class="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-line text-muted hover:text-ink">↗ Forecasting</a>
+        <a href="#portfolio" class="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-line text-muted hover:text-ink">◐ Portfolio</a>
+        <a href="#risk"      class="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-line text-muted hover:text-ink">▣ Risk Engine</a>
+        <a href="#alerts"    class="flex items-center justify-between gap-2 px-2 py-2 rounded-md hover:bg-line text-muted hover:text-ink"><span>! Alerts</span><span class="chip bg-danger/15 text-danger">3</span></a>
+        <a href="#mlops"     class="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-line text-muted hover:text-ink">⌬ MLOps</a>
+      </nav>
+      <div class="px-2 py-2 label mt-2">Watchlist</div>
+      <div class="text-[12px] divline">
+        <div class="hover-row flex items-center justify-between px-2 py-1.5"><span>NVDA</span><span class="text-secondary num">+2.41%</span></div>
+        <div class="hover-row flex items-center justify-between px-2 py-1.5"><span>AAPL</span><span class="text-secondary num">+0.62%</span></div>
+        <div class="hover-row flex items-center justify-between px-2 py-1.5"><span>TSLA</span><span class="text-danger num">−1.84%</span></div>
+        <div class="hover-row flex items-center justify-between px-2 py-1.5"><span>MSFT</span><span class="text-secondary num">+1.05%</span></div>
+        <div class="hover-row flex items-center justify-between px-2 py-1.5"><span>BTC</span><span class="text-secondary num">+3.27%</span></div>
+        <div class="hover-row flex items-center justify-between px-2 py-1.5"><span>ETH</span><span class="text-danger num">−0.49%</span></div>
+      </div>
+      <button class="btn w-full justify-center mt-3 text-[11px]">+ Add symbol</button>
+    </div>
+  </aside>
+
+  <!-- CONTENT -->
+  <section class="col-span-12 lg:col-span-10 space-y-6">
+    <!-- sections injected below -->
+    <div id="sections"></div>
+  </section>
+</main>
+
+<footer class="border-t border-line mt-10">
+  <div class="max-w-[1480px] mx-auto px-6 py-6 flex flex-col md:flex-row items-center justify-between gap-3 text-[11px] text-muted">
+    <div class="flex items-center gap-3">
+      <span class="chip bg-secondary/10 text-secondary"><span class="h-1.5 w-1.5 rounded-full bg-secondary"></span> All systems operational</span>
+      <span>API p50 142ms · ML p95 612ms · Drift 0.03σ · Data: Yahoo Finance · FastAPI</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <span>Quantra © 2026 · Data: Polygon · Finnhub · AV</span>
+      <a href="#" class="hover:text-ink">Privacy</a>
+      <a href="#" class="hover:text-ink">Terms</a>
+      <a href="#" class="hover:text-ink">Status</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ============== TICKER ============== */
+const tickers = [
+  ['SPX','5,824.12','+0.54%',1],['NDX','20,318.77','+0.83%',1],['DJI','42,610.20','+0.21%',1],
+  ['RUT','2,189.04','-0.32%',0],['VIX','13.45','-2.10%',0],['DXY','103.82','+0.11%',1],
+  ['US10Y','4.224%','+1.4bp',1],['GOLD','2,684.10','+0.72%',1],['WTI','71.18','-0.94%',0],
+  ['BTC','103,420','+3.27%',1],['ETH','3,884','-0.49%',0],['SOL','241.6','+5.12%',1],
+  ['EUR/USD','1.0867','+0.06%',1],['USD/JPY','152.08','-0.18%',0],['HSI','21,840','+1.22%',1]
+];
+const strip = document.getElementById('tickerStrip');
+const blob = tickers.concat(tickers).map(([s,p,c,u])=>`
+  <span class="inline-flex items-center gap-2">
+    <span class="text-muted">${s}</span>
+    <span class="num">${p}</span>
+    <span class="num ${u?'text-secondary':'text-danger'}">${c}</span>
+    <span class="text-line">|</span>
+  </span>`).join('');
+strip.innerHTML = blob;
+
+/* ============== SECTIONS ============== */
+const sections = document.getElementById('sections');
+
+/* ---- HERO ---- */
+sections.insertAdjacentHTML('beforeend', `
+<section class="card softgrad relative overflow-hidden">
+  <div class="p-7 md:p-9 grid md:grid-cols-12 gap-6 items-end">
+    <div class="md:col-span-7">
+      <div class="flex items-center gap-2 text-[11px] text-muted">
+        <span class="chip bg-secondary/15 text-secondary"><span class="h-1.5 w-1.5 rounded-full bg-secondary"></span> Market open · NYSE</span>
+        <span>Session: 14:22 EST · Tue, Jun 16 2026</span>
+      </div>
+      <h1 class="font-display text-[44px] md:text-[60px] leading-[0.95] tracking-tight mt-3 gradient-text">
+        Intelligence that<br/>moves with the tape.
+      </h1>
+      <p class="text-muted text-[13px] mt-4 max-w-[560px]">
+        A multi-factor research desk that fuses XGBoost forecasts, FinBERT sentiment, technical
+        regimes and portfolio risk into a single decision surface. Explainable. Auditable. Real-time.
+      </p>
+      <div class="mt-5 flex flex-wrap items-center gap-2">
+        <button class="btn btn-primary">Run morning brief →</button>
+        <button class="btn">Open AI Analyst</button>
+        <button class="btn text-muted">Import portfolio</button>
+      </div>
+    </div>
+    <div class="md:col-span-5 grid grid-cols-2 gap-3">
+      ${[
+        ['S&amp;P 500','5,824.12','+31.42','+0.54%',1,'spark1'],
+        ['NASDAQ 100','20,318.77','+167.30','+0.83%',1,'spark2'],
+        ['VIX','13.45','-0.29','-2.10%',0,'spark3'],
+        ['BTC / USD','103,420','+3,278','+3.27%',1,'spark4'],
+      ].map(([n,p,d,pc,u,id])=>`
+        <div class="card !bg-panel p-4">
+          <div class="flex items-center justify-between"><span class="label">${n}</span>
+            <span class="chip ${u?'bg-secondary/15 text-secondary':'bg-danger/15 text-danger'}">${pc}</span></div>
+          <div class="num text-[22px] font-display mt-1">${p}</div>
+          <div class="num text-[11px] ${u?'text-secondary':'text-danger'}">${d}</div>
+          <div id="${id}" class="h-10 mt-1"></div>
+        </div>`).join('')}
+    </div>
+  </div>
+  <div class="border-t border-line grid grid-cols-2 md:grid-cols-4 divide-x divide-line">
+    ${[
+      ['Models tracked','42','+3 this week'],
+      ['Signals today','1,284','live'],
+      ['Forecast MAE (5d)','0.93%','▼ 0.06'],
+      ['Sentiment coverage','9,420 articles','last 24h']
+    ].map(([k,v,s])=>`
+      <div class="p-5">
+        <div class="label">${k}</div>
+        <div class="font-display text-[22px] num mt-1">${v}</div>
+        <div class="text-[11px] text-muted">${s}</div>
+      </div>`).join('')}
+  </div>
+</section>`);
+
+/* ---- MARKET OVERVIEW + INDEX CHART ---- */
+sections.insertAdjacentHTML('beforeend', `
+<section id="markets" class="grid grid-cols-12 gap-6">
+  <div class="card col-span-12 lg:col-span-8 p-5">
+    <header class="flex items-center justify-between">
+      <div>
+        <div class="label">Market Overview · S&P 500 (ES1!)</div>
+        <h2 class="font-display text-[22px]">5,824.12 <span class="text-secondary text-[14px] num">+31.42 (+0.54%)</span></h2>
+      </div>
+      <div class="flex items-center gap-1 text-[11px] text-muted">
+        ${['1D','5D','1M','3M','YTD','1Y','5Y'].map((t,i)=>`<button class="px-2 py-1 rounded-md ${i===2?'bg-card text-ink border border-line':'hover:text-ink'}">${t}</button>`).join('')}
+        <span class="mx-2 text-line">|</span>
+        <button class="btn !py-1 !px-2">Candles</button>
+        <button class="btn !py-1 !px-2">+ Indicator</button>
+      </div>
+    </header>
+    <div id="mainChart" class="h-[340px] mt-3"></div>
+    <div class="grid grid-cols-4 gap-3 mt-3">
+      ${[
+        ['RSI(14)','58.3','neutral','#4D9FFF',58],
+        ['MACD','+12.4','bullish','#00D4AA',74],
+        ['ATR(14)','24.8','rising','#F5A524',62],
+        ['ADX','27.1','trending','#4D9FFF',71],
+      ].map(([k,v,t,c,p])=>`
+        <div class="card !bg-panel p-3">
+          <div class="flex items-center justify-between"><span class="label">${k}</span><span class="text-[10px] num" style="color:${c}">${v}</span></div>
+          <div class="text-[11px] text-muted">${t}</div>
+          <div class="progress mt-2"><i style="width:${p}%;background:${c}"></i></div>
+        </div>`).join('')}
+    </div>
+  </div>
+
+  <div class="card col-span-12 lg:col-span-4 p-5">
+    <header class="flex items-center justify-between">
+      <div class="label">Sector Performance · Today</div>
+      <span class="chip bg-line text-muted">RTH</span>
+    </header>
+    <div id="sectorChart" class="h-[200px] mt-2"></div>
+    <div class="divline mt-2 text-[12px]">
+      ${[
+        ['Information Technology','+1.42%',1,84],
+        ['Communication Services','+0.97%',1,71],
+        ['Consumer Discretionary','+0.61%',1,58],
+        ['Financials','+0.18%',1,42],
+        ['Industrials','-0.06%',0,38],
+        ['Healthcare','-0.34%',0,28],
+        ['Energy','-1.12%',0,14],
+      ].map(([n,c,u,w])=>`
+        <div class="hover-row flex items-center gap-3 px-1 py-1.5">
+          <div class="w-40 truncate text-muted">${n}</div>
+          <div class="flex-1 progress"><i style="width:${w}%;background:${u?'#00D4AA':'#E05555'}"></i></div>
+          <div class="w-16 text-right num ${u?'text-secondary':'text-danger'}">${c}</div>
+        </div>`).join('')}
+    </div>
+  </div>
+</section>`);
+
+/* ---- MOVERS + HEATMAP ---- */
+const gainers = [
+  ['NVDA','NVIDIA','1,038.21','+47.10','+4.75%',1.62],
+  ['AVGO','Broadcom','1,712.40','+58.10','+3.51%',2.21],
+  ['META','Meta','602.18','+18.40','+3.15%',1.04],
+  ['AMD','Adv. Micro','201.55','+5.60','+2.86%',0.84],
+  ['CRM','Salesforce','312.04','+8.30','+2.73%',0.42],
+];
+const losers = [
+  ['TSLA','Tesla','238.74','-4.45','-1.84%',1.13],
+  ['BA','Boeing','161.20','-2.61','-1.59%',0.58],
+  ['XOM','Exxon','112.04','-1.42','-1.25%',0.71],
+  ['PFE','Pfizer','27.84','-0.30','-1.07%',0.32],
+  ['F','Ford','11.10','-0.11','-0.98%',0.21],
+];
+const movers = (title,color,rows)=>`
+  <div class="card p-5">
+    <header class="flex items-center justify-between mb-2">
+      <div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full" style="background:${color}"></span><div class="label">${title}</div></div>
+      <button class="text-[11px] text-muted hover:text-ink">View all →</button>
+    </header>
+    <table class="w-full text-[12px]">
+      <thead class="text-muted">
+        <tr class="text-left">
+          <th class="font-normal py-1.5">Symbol</th><th class="font-normal">Last</th>
+          <th class="font-normal">Δ</th><th class="font-normal">%</th><th class="font-normal text-right">Vol (B)</th>
+        </tr>
+      </thead>
+      <tbody class="divline">
+        ${rows.map(([s,n,p,d,pc,v])=>`
+          <tr class="hover-row">
+            <td class="py-2"><div>${s}</div><div class="text-[10px] text-muted">${n}</div></td>
+            <td class="num">${p}</td>
+            <td class="num" style="color:${color}">${d}</td>
+            <td class="num" style="color:${color}">${pc}</td>
+            <td class="text-right num text-muted">${v}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+
+sections.insertAdjacentHTML('beforeend', `
+<section class="grid grid-cols-12 gap-6">
+  <div class="col-span-12 lg:col-span-4">${movers('Top Gainers · S&P 500','#00D4AA',gainers)}</div>
+  <div class="col-span-12 lg:col-span-4">${movers('Top Losers · S&P 500','#E05555',losers)}</div>
+  <div class="col-span-12 lg:col-span-4 card p-5">
+    <header class="flex items-center justify-between mb-3">
+      <div class="label">Heatmap · % change weighted by mkt cap</div>
+      <div class="flex items-center gap-1 text-[10px] text-muted">
+        <span class="h-3 w-3 rounded-sm" style="background:#E05555"></span>−3
+        <span class="h-3 w-3 rounded-sm" style="background:#3a1f24"></span>0
+        <span class="h-3 w-3 rounded-sm" style="background:#13533f"></span>
+        <span class="h-3 w-3 rounded-sm" style="background:#00D4AA"></span>+3
+      </div>
+    </header>
+    <div class="heat" id="heat"></div>
+  </div>
+</section>`);
+
+/* heatmap fill */
+const heatNames = ['AAPL','MSFT','NVDA','GOOG','AMZN','META','TSLA','BRK','LLY','AVGO','JPM','XOM','UNH','V','MA','PG','HD','COST','JNJ','ABBV','CVX','PEP','KO','BAC','WMT','MRK','TMO','NFLX','ORCL','AMD','ADBE','CRM','MCD','ACN','LIN','INTC','DIS','CSCO','ABT','PFE','WFC','TXN','PM','IBM','GE','CAT','BA','RTX'];
+const heatEl = document.getElementById('heat');
+heatEl.innerHTML = heatNames.map((n,i)=>{
+  const v = (Math.sin(i*1.3)+Math.cos(i*0.7))*1.4;
+  const u = v>=0;
+  const intensity = Math.min(Math.abs(v)/3,1);
+  const bg = u
+    ? `rgba(0,212,170,${0.18+intensity*0.72})`
+    : `rgba(224,85,85,${0.18+intensity*0.72})`;
+  return `<div style="background:${bg}">
+    <div class="font-display">${n}</div>
+    <div class="num text-[10px]" style="opacity:.9">${(u?'+':'')+v.toFixed(2)}%</div>
+  </div>`;
+}).join('');
+
+/* ---- STOCK ANALYSIS ---- */
+sections.insertAdjacentHTML('beforeend', `
+<section id="stock" class="grid grid-cols-12 gap-6">
+  <div class="card col-span-12 lg:col-span-8 p-5">
+    <header class="flex items-start justify-between gap-4 flex-wrap">
+      <div class="flex items-center gap-3">
+        <div class="h-12 w-12 rounded-xl grid place-items-center font-display text-[18px]" style="background:linear-gradient(135deg,#4D9FFF22,#00D4AA22);border:1px solid #1F1F2B">NV</div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h3 class="font-display text-[20px]">NVIDIA Corp.</h3>
+            <span class="chip bg-line text-muted">NVDA · NASDAQ</span>
+            <span class="chip bg-secondary/15 text-secondary">AI Score 87</span>
+          </div>
+          <div class="text-[11px] text-muted mt-0.5">Semiconductors · Mega-cap · Mkt Cap 2.54T · Float 22.1B</div>
+        </div>
+      </div>
+      <div class="text-right">
+        <div class="font-display text-[26px] num">1,038.21 <span class="text-secondary text-[14px]">+47.10 (4.75%)</span></div>
+        <div class="text-[11px] text-muted">Volume 62.1M · Avg 38.4M · Range 982 — 1,042</div>
+      </div>
+    </header>
+
+    <div id="candleChart" class="h-[320px] mt-4"></div>
+    <div id="volumeChart" class="h-[80px] -mt-2"></div>
+
+    <div class="grid grid-cols-2 gap-3 mt-3">
+      <div class="card !bg-panel p-3">
+        <div class="flex items-center justify-between"><span class="label">MACD (12,26,9)</span><span class="chip bg-secondary/15 text-secondary">Bullish cross</span></div>
+        <div id="macdChart" class="h-[110px]"></div>
+      </div>
+      <div class="card !bg-panel p-3">
+        <div class="flex items-center justify-between"><span class="label">RSI (14)</span><span class="chip bg-primary/15 text-primary">58.3 · neutral</span></div>
+        <div id="rsiChart" class="h-[110px]"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- right column: fundamentals + signals -->
+  <div class="col-span-12 lg:col-span-4 space-y-6">
+    <div class="card p-5">
+      <div class="label">Fundamentals</div>
+      <div class="grid grid-cols-2 gap-y-3 mt-3 text-[12px]">
+        ${[
+          ['P/E (ttm)','72.4'],['Fwd P/E','38.1'],['PEG','1.42'],['EV / EBITDA','64.8'],
+          ['Gross margin','75.3%'],['Op. margin','62.4%'],['ROE','103.4%'],['Net debt / EBITDA','-0.62'],
+          ['Rev growth (y/y)','+122%'],['EPS growth (y/y)','+168%'],['FCF yield','1.4%'],['Beta (5Y)','1.71'],
+        ].map(([k,v])=>`<div class="flex justify-between border-b border-line pb-1.5"><span class="text-muted">${k}</span><span class="num">${v}</span></div>`).join('')}
+      </div>
+    </div>
+
+    <div class="card p-5">
+      <header class="flex items-center justify-between">
+        <div class="label">Analyst Consensus</div>
+        <span class="chip bg-secondary/15 text-secondary">Strong Buy</span>
+      </header>
+      <div class="mt-3 text-[12px]">
+        <div class="flex items-center gap-2">
+          <div class="font-display text-[28px] num">4.6</div>
+          <div class="text-muted text-[11px]">/ 5 · 47 analysts</div>
+        </div>
+        <div class="mt-3 space-y-2">
+          ${[['Strong Buy',31,'#00D4AA'],['Buy',11,'#4D9FFF'],['Hold',4,'#F5A524'],['Sell',1,'#E05555']].map(([l,n,c])=>`
+            <div class="flex items-center gap-2">
+              <div class="w-20 text-muted text-[11px]">${l}</div>
+              <div class="flex-1 progress"><i style="width:${(n/47)*100}%;background:${c}"></i></div>
+              <div class="w-6 text-right num text-[11px]">${n}</div>
+            </div>`).join('')}
+        </div>
+        <div class="grid grid-cols-3 gap-3 mt-4 text-center">
+          <div><div class="text-muted text-[10px]">Low</div><div class="num">$840</div></div>
+          <div><div class="text-muted text-[10px]">Mean</div><div class="num text-primary">$1,210</div></div>
+          <div><div class="text-muted text-[10px]">High</div><div class="num">$1,500</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card p-5">
+      <header class="flex items-center justify-between"><div class="label">Active Signals</div><span class="chip bg-line text-muted">6 / 12 firing</span></header>
+      <div class="divline text-[12px] mt-2">
+        ${[
+          ['Golden cross 50/200','#00D4AA','12m'],
+          ['Volume thrust > 2σ','#00D4AA','3h'],
+          ['Options skew flattening','#4D9FFF','today'],
+          ['Insider net buying','#00D4AA','7d'],
+          ['Headline sentiment > 0.8','#4D9FFF','24h'],
+          ['Short interest decline','#00D4AA','wkly'],
+        ].map(([n,c,t])=>`
+        <div class="flex items-center gap-2 py-2">
+          <span class="h-1.5 w-1.5 rounded-full" style="background:${c}"></span>
+          <span class="flex-1">${n}</span>
+          <span class="text-muted text-[10px]">${t}</span>
+        </div>`).join('')}
+      </div>
+    </div>
+  </div>
+</section>`);
+
+/* ---- AI ANALYST + SENTIMENT + FORECAST ---- */
+sections.insertAdjacentHTML('beforeend', `
+<section id="analyst" class="grid grid-cols-12 gap-6">
+  <div class="card col-span-12 lg:col-span-7 p-5 relative overflow-hidden">
+    <div class="absolute -top-10 -right-10 h-40 w-40 rounded-full" style="background:radial-gradient(circle,rgba(77,159,255,.25),transparent 60%)"></div>
+    <header class="flex items-center justify-between relative">
+      <div class="flex items-center gap-2">
+        <div class="h-7 w-7 rounded-md grid place-items-center" style="background:linear-gradient(135deg,#4D9FFF,#00D4AA);color:#0B0B12;font-weight:700">◇</div>
+        <div>
+          <div class="label">AI Analyst · Gemini 2.5 + GPT consensus</div>
+          <div class="text-[13px] font-display">Daily Briefing — NVDA</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="chip bg-secondary/15 text-secondary">Conviction 0.84</span>
+        <button class="btn">Regenerate</button>
+      </div>
+    </header>
+    <div class="mt-4 text-[12.5px] leading-6 text-ink/90 relative">
+      <p><span class="text-primary">Thesis.</span> NVDA continues to compound a winner-take-most position in
+      AI accelerators. Hyperscaler capex revisions for FY27 (+18% w/w on consensus) and a flattening of
+      put-call skew (24d) reinforce the trend regime. A bullish MACD cross was confirmed on yesterday's
+      session, with volume +112% vs the 20-day average.</p>
+      <p class="mt-3"><span class="text-secondary">What changed (24h).</span> Headline sentiment moved from
+      0.62 → 0.81 (FinBERT) on supply-chain commentary from TSM and a positive readthrough from CRWV
+      capex guide. The model upgrades the 5-day forecast from <span class="num">+1.8%</span> to
+      <span class="num text-secondary">+3.4%</span> with a widened 90% interval.</p>
+      <p class="mt-3"><span class="text-amber">Risk.</span> Position sizing should respect a 2.1× single-name
+      portfolio beta lift. Export-control headlines remain the dominant downside fat tail (modelled
+      −12% adverse scenario).</p>
+    </div>
+    <div class="grid grid-cols-3 gap-3 mt-5 relative">
+      ${[
+        ['Forecast (5d)','+3.4%','#00D4AA','Prophet · XGB'],
+        ['Forecast (30d)','+8.1%','#4D9FFF','LSTM ensemble'],
+        ['Tail VaR (95%)','-7.6%','#E05555','MC · 10k paths']
+      ].map(([k,v,c,m])=>`
+        <div class="card !bg-panel p-3">
+          <div class="label">${k}</div>
+          <div class="font-display text-[20px] num" style="color:${c}">${v}</div>
+          <div class="text-[10px] text-muted">${m}</div>
+        </div>`).join('')}
+    </div>
+    <div class="mt-5">
+      <div class="flex items-center justify-between">
+        <div class="label">SHAP attribution · what drove the call</div>
+        <span class="text-[10px] text-muted">Top 6 / 184 features</span>
+      </div>
+      <div class="space-y-2 mt-2 text-[12px]">
+        ${[
+          ['Hyperscaler capex revision Δ',+0.28,'#00D4AA'],
+          ['FinBERT 24h sentiment',+0.21,'#00D4AA'],
+          ['Options skew (24d)',+0.14,'#00D4AA'],
+          ['Realised vol 10d',-0.08,'#E05555'],
+          ['Insider net buys (30d)',+0.07,'#00D4AA'],
+          ['USD/JPY momentum',-0.05,'#E05555'],
+        ].map(([n,v,c])=>{
+          const pct = Math.abs(v)*220;
+          const dir = v>=0 ? 'left:50%' : `right:50%`;
+          return `
+          <div class="flex items-center gap-3">
+            <div class="w-56 truncate text-muted">${n}</div>
+            <div class="flex-1 h-2 bg-line rounded relative">
+              <div class="absolute top-0 bottom-0 w-px bg-muted/40" style="left:50%"></div>
+              <div class="absolute top-0 bottom-0 shap-bar" style="${dir};width:${pct}px;background:${c}"></div>
+            </div>
+            <div class="w-12 text-right num" style="color:${c}">${v>=0?'+':''}${v.toFixed(2)}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-span-12 lg:col-span-5 space-y-6">
+    <div class="card p-5">
+      <header class="flex items-center justify-between"><div class="label">Sentiment Stream · FinBERT</div>
+        <div class="flex items-center gap-2 text-[10px] text-muted">
+          <span class="h-2 w-2 rounded-full bg-secondary"></span>positive
+          <span class="h-2 w-2 rounded-full bg-amber"></span>neutral
+          <span class="h-2 w-2 rounded-full bg-danger"></span>negative
+        </div>
+      </header>
+      <div id="sentChart" class="h-[150px] mt-2"></div>
+      <div class="divline mt-2 text-[12px]">
+        ${[
+          ['Reuters','NVIDIA expands Blackwell shipments as hyperscaler demand stays "off the charts"',0.92,'2m'],
+          ['Bloomberg','TSMC raises 2026 capex; AI exposure now 58% of advanced node revenue',0.81,'14m'],
+          ['FT','Export controls bill stalls in committee; outlook ambiguous',-0.22,'47m'],
+          ['CNBC','Cathie Wood trims NVDA, rotates to small-cap AI infra plays',-0.41,'1h'],
+        ].map(([src,h,s,t])=>`
+          <div class="hover-row py-2 px-1 flex gap-2 items-start">
+            <span class="h-1.5 w-1.5 rounded-full mt-1.5" style="background:${s>0.3?'#00D4AA':s<-0.1?'#E05555':'#F5A524'}"></span>
+            <div class="flex-1">
+              <div class="text-muted text-[10px] flex justify-between"><span>${src}</span><span>${t}</span></div>
+              <div>${h}</div>
+            </div>
+            <div class="num text-[11px] w-12 text-right" style="color:${s>=0?'#00D4AA':'#E05555'}">${(s>=0?'+':'')+s.toFixed(2)}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="card p-5" id="forecast">
+      <header class="flex items-center justify-between">
+        <div class="label">Forecast Engine · Ensemble (XGB + LGB + LSTM + Prophet)</div>
+        <span class="chip bg-primary/15 text-primary">CI 90%</span>
+      </header>
+      <div id="forecastChart" class="h-[200px] mt-2"></div>
+      <div class="grid grid-cols-4 gap-2 mt-2 text-center text-[11px]">
+        ${[['MAE','0.93%'],['RMSE','1.27%'],['Dir. acc.','71%'],['Sharpe (bt)','1.84']].map(([k,v])=>`
+          <div class="card !bg-panel p-2"><div class="text-muted text-[10px]">${k}</div><div class="num">${v}</div></div>`).join('')}
+      </div>
+    </div>
+  </div>
+</section>`);
+
+/* ---- PORTFOLIO + RISK ---- */
+sections.insertAdjacentHTML('beforeend', `
+<section id="portfolio" class="grid grid-cols-12 gap-6">
+  <div class="card col-span-12 lg:col-span-5 p-5">
+    <header class="flex items-center justify-between">
+      <div>
+        <div class="label">Portfolio · Long-Only Growth</div>
+        <h3 class="font-display text-[20px] mt-1">$1,284,910 <span class="text-secondary text-[12px] num">+$18,420 today (+1.45%)</span></h3>
+      </div>
+      <button class="btn">Manage</button>
+    </header>
+    <div id="pnlChart" class="h-[180px] mt-2"></div>
+    <div class="grid grid-cols-4 gap-2 text-center text-[11px] mt-2">
+      ${[['YTD','+22.4%','#00D4AA'],['1Y','+38.1%','#00D4AA'],['Beta','1.18','#4D9FFF'],['Sharpe','1.62','#4D9FFF']].map(([k,v,c])=>`
+        <div class="card !bg-panel p-2"><div class="text-muted text-[10px]">${k}</div><div class="num" style="color:${c}">${v}</div></div>`).join('')}
+    </div>
+  </div>
+
+  <div class="card col-span-12 lg:col-span-4 p-5">
+    <header class="flex items-center justify-between"><div class="label">Allocation by sector</div><span class="chip bg-line text-muted">14 positions</span></header>
+    <div id="allocChart" class="h-[230px]"></div>
+    <div class="divline text-[12px]">
+      ${[
+        ['Information Tech',38,'#4D9FFF'],
+        ['Communication',16,'#00D4AA'],
+        ['Healthcare',12,'#F5A524'],
+        ['Financials',11,'#E05555'],
+        ['Consumer Disc.',9,'#A78BFA'],
+        ['Energy',6,'#22D3EE'],
+        ['Other',8,'#7A7A8C']
+      ].map(([n,w,c])=>`
+      <div class="flex items-center gap-3 py-1.5">
+        <span class="h-2 w-2 rounded-full" style="background:${c}"></span>
+        <span class="flex-1 text-muted">${n}</span>
+        <span class="num">${w}%</span>
+      </div>`).join('')}
+    </div>
+  </div>
+
+  <div class="card col-span-12 lg:col-span-3 p-5" id="risk">
+    <header class="flex items-center justify-between"><div class="label">Risk Engine</div><span class="chip bg-amber/15 text-amber">Concentrated</span></header>
+    <div class="space-y-3 text-[12px] mt-3">
+      ${[
+        ['VaR (1d, 95%)','-1.84%',58,'#E05555'],
+        ['CVaR (1d, 95%)','-2.71%',70,'#E05555'],
+        ['Max drawdown','-12.4%',62,'#F5A524'],
+        ['Single-name conc.','NVDA 18%',74,'#F5A524'],
+        ['Realised vol (30d)','22.4%',46,'#4D9FFF'],
+        ['Correlation to SPX','0.82',82,'#4D9FFF'],
+      ].map(([k,v,p,c])=>`
+        <div>
+          <div class="flex items-center justify-between"><span class="text-muted">${k}</span><span class="num" style="color:${c}">${v}</span></div>
+          <div class="progress mt-1"><i style="width:${p}%;background:${c}"></i></div>
+        </div>`).join('')}
+    </div>
+    <div class="mt-4 text-[11px] text-muted">
+      Recommendation: trim NVDA 4pp into VXX hedge; cuts CVaR to −2.18% with negligible drag on expected return.
+    </div>
+  </div>
+</section>`);
+
+/* ---- ALERTS + CORRELATIONS + MLOPS ---- */
+sections.insertAdjacentHTML('beforeend', `
+<section id="alerts" class="grid grid-cols-12 gap-6">
+  <div class="card col-span-12 lg:col-span-4 p-5">
+    <header class="flex items-center justify-between"><div class="label">Active Alerts</div>
+      <button class="btn text-[11px]">+ New rule</button></header>
+    <div class="divline text-[12px] mt-2">
+      ${[
+        ['NVDA','price > 1050','triggered 3m ago','#00D4AA','target'],
+        ['TSLA','RSI < 30','armed','#F5A524','indicator'],
+        ['SPY','-2σ daily move','armed','#4D9FFF','vol'],
+        ['BTC','funding < -0.02%','triggered 1h ago','#E05555','flow'],
+        ['Portfolio','drawdown > 8%','armed','#7A7A8C','risk'],
+      ].map(([s,c,st,col,t])=>`
+        <div class="hover-row py-2 px-1 flex items-center gap-3">
+          <span class="h-2 w-2 rounded-full" style="background:${col}"></span>
+          <div class="flex-1">
+            <div class="flex items-center gap-2"><span>${s}</span><span class="chip bg-line text-muted">${t}</span></div>
+            <div class="text-muted text-[10px]">${c}</div>
+          </div>
+          <div class="text-[10px] text-muted">${st}</div>
+        </div>`).join('')}
+    </div>
+  </div>
+
+  <div class="card col-span-12 lg:col-span-4 p-5">
+    <header class="flex items-center justify-between"><div class="label">Correlation matrix · 60d</div><span class="chip bg-line text-muted">portfolio holdings</span></header>
+    <div id="corrChart" class="h-[280px]"></div>
+  </div>
+
+  <div class="card col-span-12 lg:col-span-4 p-5" id="mlops">
+    <header class="flex items-center justify-between">
+      <div class="label">MLOps · Model Registry (MLflow)</div>
+      <span class="chip bg-secondary/15 text-secondary">healthy</span>
+    </header>
+    <div class="grid grid-cols-3 gap-2 text-center text-[11px] mt-2">
+      ${[['Models','42'],['Prod','9'],['Drift alerts','1']].map(([k,v])=>`
+        <div class="card !bg-panel p-2"><div class="text-muted text-[10px]">${k}</div><div class="num font-display text-[16px]">${v}</div></div>`).join('')}
+    </div>
+    <div class="divline text-[12px] mt-3">
+      ${[
+        ['forecast_nvda',  'v32', 'production', 'MAE 0.91%','#00D4AA'],
+        ['forecast_spy',   'v18', 'production', 'MAE 0.42%','#00D4AA'],
+        ['sentiment_finbert','v11','production','F1 0.88','#00D4AA'],
+        ['regime_hmm',     'v05', 'staging',    'AUC 0.79','#4D9FFF'],
+        ['risk_var_lstm',  'v07', 'shadow',     'cov 94%','#F5A524'],
+        ['anomaly_isof',   'v02', 'staging',    'P@5 0.81','#4D9FFF'],
+      ].map(([n,v,st,m,c])=>`
+        <div class="hover-row py-2 px-1 flex items-center gap-3">
+          <span class="h-1.5 w-1.5 rounded-full" style="background:${c}"></span>
+          <div class="flex-1"><div>${n} <span class="text-muted text-[10px]">· ${v}</span></div>
+            <div class="text-muted text-[10px]">${m}</div></div>
+          <span class="chip bg-line text-muted">${st}</span>
+        </div>`).join('')}
+    </div>
+    <div class="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+      <div class="card !bg-panel p-3">
+        <div class="label">Feature drift</div>
+        <div id="driftChart" class="h-[80px]"></div>
+      </div>
+      <div class="card !bg-panel p-3">
+        <div class="label">Prediction latency</div>
+        <div id="latChart" class="h-[80px]"></div>
+      </div>
+    </div>
+  </div>
+</section>`);
+
+/* ---- BIG CTA ---- */
+sections.insertAdjacentHTML('beforeend', `
+<section class="card softgrad p-8 md:p-10 flex flex-col md:flex-row items-start md:items-center gap-6 ring-glow">
+  <div class="flex-1">
+    <div class="label">Get started</div>
+    <h3 class="font-display text-[30px] md:text-[36px] tracking-tight mt-1">Trade with a research desk in your pocket.</h3>
+    <p class="text-muted text-[13px] max-w-[640px] mt-2">Connect your broker, import a portfolio, or paste a watchlist — Quantra wires up models, news, risk and forecasts in under a minute.</p>
+  </div>
+  <div class="flex flex-wrap gap-2">
+    <button class="btn btn-primary">Create free account →</button>
+    <button class="btn">Book a demo</button>
+    <button class="btn text-muted">Read the whitepaper</button>
+  </div>
+</section>`);
+
+/* ============== CHARTS ============== */
+const AXIS = { axisLine:{lineStyle:{color:'#2A2A3A'}}, axisLabel:{color:'#7A7A8C',fontSize:10,fontFamily:'DM Mono'}, splitLine:{lineStyle:{color:'#1F1F2B'}} };
+const grid0 = { left: 36, right: 16, top: 16, bottom: 22 };
+
+function spark(id, color){
+  const el = document.getElementById(id); if(!el) return;
+  const c = echarts.init(el,null,{renderer:'svg'});
+  const n=40, data=[]; let v=100+Math.random()*20;
+  for(let i=0;i<n;i++){v+=(Math.random()-0.48)*2; data.push(+v.toFixed(2));}
+  c.setOption({
+    grid:{left:0,right:0,top:4,bottom:0},
+    xAxis:{type:'category',show:false,data:[...Array(n).keys()]},
+    yAxis:{type:'value',show:false,scale:true},
+    series:[{type:'line',data,smooth:true,showSymbol:false,lineStyle:{color,width:1.6},
+      areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:color+'66'},{offset:1,color:color+'00'}])}}]
+  });
+}
+['spark1','spark2','spark4'].forEach(id=>spark(id,'#00D4AA'));
+spark('spark3','#E05555');
+
+/* main index chart (area + bars) */
+(function(){
+  const el = document.getElementById('mainChart');
+  const c = echarts.init(el,null,{renderer:'svg'});
+  const n=120; let v=5500; const price=[],vol=[],dates=[];
+  for(let i=0;i<n;i++){
+    v += (Math.sin(i/9)*3 + (Math.random()-0.48)*8);
+    price.push(+v.toFixed(2));
+    vol.push(Math.round(2e6 + Math.random()*5e6));
+    dates.push('D-'+(n-i));
+  }
+  c.setOption({
+    grid:[{left:48,right:24,top:16,height:'62%'},{left:48,right:24,top:'74%',height:'18%'}],
+    tooltip:{trigger:'axis',backgroundColor:'#0E0E15',borderColor:'#1F1F2B',textStyle:{color:'#E7E7F0',fontSize:11}},
+    xAxis:[{type:'category',data:dates,boundaryGap:false,...AXIS},
+           {type:'category',data:dates,gridIndex:1,axisLabel:{show:false},axisLine:{lineStyle:{color:'#2A2A3A'}},axisTick:{show:false}}],
+    yAxis:[{type:'value',scale:true,...AXIS},{type:'value',gridIndex:1,splitLine:{show:false},axisLabel:{show:false},axisLine:{show:false},axisTick:{show:false}}],
+    series:[
+      {type:'line',data:price,smooth:true,showSymbol:false,lineStyle:{color:'#4D9FFF',width:2},
+       areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#4D9FFF55'},{offset:1,color:'#4D9FFF00'}])}},
+      {type:'bar',xAxisIndex:1,yAxisIndex:1,data:vol,itemStyle:{color:'#1F2A3D'},barWidth:'60%'}
+    ]
+  });
+})();
+
+/* sector bar */
+(function(){
+  const el=document.getElementById('sectorChart'); const c=echarts.init(el,null,{renderer:'svg'});
+  const names=['IT','Comm','Disc','Fin','Ind','Stap','Util','Hlth','Mat','RE','Engy'];
+  const vals=[1.42,0.97,0.61,0.18,-0.06,-0.08,-0.15,-0.34,-0.41,-0.78,-1.12];
+  c.setOption({
+    grid:{left:30,right:14,top:10,bottom:20},
+    xAxis:{type:'category',data:names,...AXIS,axisLabel:{...AXIS.axisLabel,fontSize:9}},
+    yAxis:{type:'value',...AXIS},
+    series:[{type:'bar',data:vals.map(v=>({value:v,itemStyle:{color:v>=0?'#00D4AA':'#E05555',borderRadius:[3,3,0,0]}})),barWidth:'58%'}]
+  });
+})();
+
+/* candle */
+(function(){
+  const el=document.getElementById('candleChart'); if(!el) return;
+  const c=echarts.init(el,null,{renderer:'svg'});
+  const n=80,data=[],vol=[],dates=[]; let p=900;
+  for(let i=0;i<n;i++){
+    const o=p; const ch=(Math.random()-0.45)*22; const cl=o+ch;
+    const h=Math.max(o,cl)+Math.random()*8; const l=Math.min(o,cl)-Math.random()*8;
+    data.push([+o.toFixed(2),+cl.toFixed(2),+l.toFixed(2),+h.toFixed(2)]);
+    vol.push({value:Math.round(2e7+Math.random()*4e7),itemStyle:{color:cl>=o?'#00D4AA55':'#E0555555'}});
+    dates.push('D-'+(n-i)); p=cl;
+  }
+  c.setOption({
+    grid:{left:50,right:16,top:10,bottom:18},
+    tooltip:{trigger:'axis',backgroundColor:'#0E0E15',borderColor:'#1F1F2B',textStyle:{color:'#E7E7F0',fontSize:11}},
+    xAxis:{type:'category',data:dates,...AXIS,axisLabel:{...AXIS.axisLabel,fontSize:9}},
+    yAxis:{type:'value',scale:true,...AXIS},
+    series:[{type:'candlestick',data,itemStyle:{color:'#00D4AA',color0:'#E05555',borderColor:'#00D4AA',borderColor0:'#E05555'}},
+            {type:'line',data:data.map((d,i)=>{ // SMA20
+               const s=Math.max(0,i-19); const slice=data.slice(s,i+1);
+               return +(slice.reduce((a,b)=>a+b[1],0)/slice.length).toFixed(2);
+             }),smooth:true,showSymbol:false,lineStyle:{color:'#F5A524',width:1.4},name:'SMA20'},
+            {type:'line',data:data.map((d,i)=>{ const s=Math.max(0,i-49); const slice=data.slice(s,i+1);
+               return +(slice.reduce((a,b)=>a+b[1],0)/slice.length).toFixed(2);
+             }),smooth:true,showSymbol:false,lineStyle:{color:'#4D9FFF',width:1.4},name:'SMA50'}]
+  });
+  /* volume */
+  const v=echarts.init(document.getElementById('volumeChart'),null,{renderer:'svg'});
+  v.setOption({grid:{left:50,right:16,top:4,bottom:14},
+    xAxis:{type:'category',data:dates,axisLabel:{show:false},axisLine:{lineStyle:{color:'#2A2A3A'}},axisTick:{show:false}},
+    yAxis:{type:'value',splitLine:{show:false},axisLabel:{show:false},axisLine:{show:false},axisTick:{show:false}},
+    series:[{type:'bar',data:vol,barWidth:'60%'}]});
+})();
+
+/* MACD */
+(function(){
+  const el=document.getElementById('macdChart'); if(!el) return;
+  const c=echarts.init(el,null,{renderer:'svg'});
+  const n=60,macd=[],sig=[],hist=[]; let m=0,s=0;
+  for(let i=0;i<n;i++){ m += (Math.sin(i/6)*0.4 + (Math.random()-0.5)*0.4); s = s*0.85 + m*0.15;
+    macd.push(+m.toFixed(2)); sig.push(+s.toFixed(2));
+    const h=m-s; hist.push({value:+h.toFixed(2),itemStyle:{color:h>=0?'#00D4AA88':'#E0555588'}});
+  }
+  c.setOption({grid:{left:30,right:8,top:6,bottom:14},
+    xAxis:{type:'category',data:[...Array(n).keys()],...AXIS,axisLabel:{show:false}},
+    yAxis:{type:'value',...AXIS},
+    series:[{type:'bar',data:hist,barWidth:'70%'},
+            {type:'line',data:macd,smooth:true,showSymbol:false,lineStyle:{color:'#4D9FFF',width:1.4}},
+            {type:'line',data:sig,smooth:true,showSymbol:false,lineStyle:{color:'#F5A524',width:1.4}}]});
+})();
+
+/* RSI */
+(function(){
+  const el=document.getElementById('rsiChart'); if(!el) return;
+  const c=echarts.init(el,null,{renderer:'svg'});
+  const n=60,rsi=[]; let r=55;
+  for(let i=0;i<n;i++){ r += (Math.sin(i/4)*4 + (Math.random()-0.5)*5); r=Math.max(15,Math.min(85,r)); rsi.push(+r.toFixed(1)); }
+  c.setOption({grid:{left:30,right:8,top:6,bottom:14},
+    xAxis:{type:'category',data:[...Array(n).keys()],...AXIS,axisLabel:{show:false}},
+    yAxis:{type:'value',min:0,max:100,...AXIS,
+      splitLine:{lineStyle:{color:'#1F1F2B'}}},
+    series:[{type:'line',data:rsi,smooth:true,showSymbol:false,lineStyle:{color:'#00D4AA',width:1.6},
+       areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#00D4AA44'},{offset:1,color:'#00D4AA00'}])},
+       markLine:{symbol:'none',silent:true,lineStyle:{color:'#7A7A8C66',type:'dashed'},
+         data:[{yAxis:70,label:{formatter:'70',color:'#7A7A8C',fontSize:9}},{yAxis:30,label:{formatter:'30',color:'#7A7A8C',fontSize:9}}]}}]});
+})();
+
+/* sentiment area */
+(function(){
+  const el=document.getElementById('sentChart'); if(!el) return;
+  const c=echarts.init(el,null,{renderer:'svg'});
+  const n=48,data=[]; for(let i=0;i<n;i++) data.push(+(Math.sin(i/5)*0.4 + Math.random()*0.3 + 0.2).toFixed(2));
+  c.setOption({grid:{left:30,right:8,top:8,bottom:14},
+    xAxis:{type:'category',data:[...Array(n).keys()],...AXIS,axisLabel:{show:false}},
+    yAxis:{type:'value',min:-1,max:1,...AXIS},
+    series:[{type:'line',data,smooth:true,showSymbol:false,lineStyle:{color:'#4D9FFF',width:1.6},
+      areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#4D9FFF55'},{offset:1,color:'#4D9FFF00'}])},
+      markLine:{symbol:'none',silent:true,lineStyle:{color:'#7A7A8C44',type:'dashed'},data:[{yAxis:0}]}}]});
+})();
+
+/* forecast fan */
+(function(){
+  const el=document.getElementById('forecastChart'); if(!el) return;
+  const c=echarts.init(el,null,{renderer:'svg'});
+  const past=40, fut=20; const dates=[]; const hist=[]; let v=900;
+  for(let i=0;i<past;i++){ v+= (Math.sin(i/6)*4+(Math.random()-0.5)*7); hist.push(+v.toFixed(2)); dates.push('D-'+(past-i)); }
+  const fc=[],up=[],lo=[]; let f=v;
+  for(let i=0;i<fut;i++){ f += 1.6 + (Math.random()-0.4)*3; const band=8+i*1.6;
+    fc.push(+f.toFixed(2)); up.push(+(f+band).toFixed(2)); lo.push(+(f-band).toFixed(2)); dates.push('D+'+(i+1)); }
+  const full = hist.concat(fc);
+  const upline = Array(past).fill('-').concat(up);
+  const loline = Array(past).fill('-').concat(lo);
+  const histLine = hist.concat(Array(fut).fill('-'));
+  const fcLine = Array(past-1).fill('-').concat([hist[past-1]]).concat(fc);
+  c.setOption({grid:{left:46,right:14,top:10,bottom:22},
+    tooltip:{trigger:'axis',backgroundColor:'#0E0E15',borderColor:'#1F1F2B',textStyle:{color:'#E7E7F0',fontSize:11}},
+    xAxis:{type:'category',data:dates,...AXIS,axisLabel:{...AXIS.axisLabel,fontSize:9}},
+    yAxis:{type:'value',scale:true,...AXIS},
+    series:[
+      {type:'line',data:loline,lineStyle:{opacity:0},stack:'band',symbol:'none'},
+      {type:'line',data:upline.map((v,i)=>v==='-'?'-':v-loline[i]),stack:'band',symbol:'none',
+        lineStyle:{opacity:0},areaStyle:{color:'#4D9FFF22'}},
+      {type:'line',data:histLine,smooth:true,showSymbol:false,lineStyle:{color:'#E7E7F0',width:1.6}},
+      {type:'line',data:fcLine,smooth:true,showSymbol:false,lineStyle:{color:'#4D9FFF',width:1.8,type:'dashed'}}
+    ]});
+})();
+
+/* portfolio pnl */
+(function(){
+  const el=document.getElementById('pnlChart'); if(!el) return;
+  const c=echarts.init(el,null,{renderer:'svg'});
+  const n=120; let v=1; const data=[];
+  for(let i=0;i<n;i++){ v *= 1 + (Math.sin(i/10)*0.004 + (Math.random()-0.48)*0.012); data.push(+(v*1e6).toFixed(0)); }
+  c.setOption({grid:{left:54,right:14,top:8,bottom:22},
+    tooltip:{trigger:'axis',backgroundColor:'#0E0E15',borderColor:'#1F1F2B',textStyle:{color:'#E7E7F0',fontSize:11}},
+    xAxis:{type:'category',data:[...Array(n).keys()],...AXIS,axisLabel:{show:false}},
+    yAxis:{type:'value',scale:true,...AXIS,axisLabel:{...AXIS.axisLabel,formatter:v=>'$'+(v/1e6).toFixed(2)+'M'}},
+    series:[{type:'line',data,smooth:true,showSymbol:false,lineStyle:{color:'#00D4AA',width:2},
+      areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#00D4AA55'},{offset:1,color:'#00D4AA00'}])}}]});
+})();
+
+/* allocation donut */
+(function(){
+  const el=document.getElementById('allocChart'); if(!el) return;
+  const c=echarts.init(el,null,{renderer:'svg'});
+  c.setOption({
+    series:[{type:'pie',radius:['55%','85%'],avoidLabelOverlap:true,
+      itemStyle:{borderColor:'#14141C',borderWidth:2},
+      label:{color:'#7A7A8C',fontSize:10,fontFamily:'DM Mono'},
+      data:[
+        {value:38,name:'IT',itemStyle:{color:'#4D9FFF'}},
+        {value:16,name:'Comm',itemStyle:{color:'#00D4AA'}},
+        {value:12,name:'Hlth',itemStyle:{color:'#F5A524'}},
+        {value:11,name:'Fin',itemStyle:{color:'#E05555'}},
+        {value:9, name:'Disc',itemStyle:{color:'#A78BFA'}},
+        {value:6, name:'Engy',itemStyle:{color:'#22D3EE'}},
+        {value:8, name:'Other',itemStyle:{color:'#7A7A8C'}},
+      ]}]});
+})();
+
+/* correlation heatmap */
+(function(){
+  const el=document.getElementById('corrChart'); if(!el) return;
+  const c=echarts.init(el,null,{renderer:'svg'});
+  const tk=['NVDA','MSFT','AAPL','META','TSLA','SPY','BTC'];
+  const data=[];
+  for(let i=0;i<tk.length;i++) for(let j=0;j<tk.length;j++){
+    let v = i===j?1:+(Math.cos((i-j)*0.6)*0.6 + (Math.random()-0.3)*0.4).toFixed(2);
+    v=Math.max(-1,Math.min(1,v)); data.push([j,i,v]);
+  }
+  c.setOption({
+    tooltip:{position:'top',backgroundColor:'#0E0E15',borderColor:'#1F1F2B',textStyle:{color:'#E7E7F0',fontSize:11}},
+    grid:{left:48,right:8,top:22,bottom:22},
+    xAxis:{type:'category',data:tk,...AXIS,splitArea:{show:false}},
+    yAxis:{type:'category',data:tk,...AXIS,splitArea:{show:false}},
+    visualMap:{min:-1,max:1,calculable:false,show:false,inRange:{color:['#E05555','#14141C','#00D4AA']}},
+    series:[{type:'heatmap',data,label:{show:true,color:'#0B0B12',fontSize:10,fontFamily:'DM Mono',formatter:p=>p.value[2].toFixed(2)},itemStyle:{borderColor:'#14141C',borderWidth:2}}]});
+})();
+
+/* drift + latency */
+(function(){
+  const drift = (id,color)=>{ const el=document.getElementById(id); if(!el) return;
+    const c=echarts.init(el,null,{renderer:'svg'});
+    const n=40, d=[]; for(let i=0;i<n;i++) d.push(+(Math.abs(Math.sin(i/4))*0.3+Math.random()*0.2).toFixed(2));
+    c.setOption({grid:{left:24,right:6,top:4,bottom:14},
+      xAxis:{type:'category',data:[...Array(n).keys()],axisLabel:{show:false},axisLine:{show:false},axisTick:{show:false}},
+      yAxis:{type:'value',axisLabel:{show:false},splitLine:{show:false},axisLine:{show:false},axisTick:{show:false}},
+      series:[{type:'bar',data:d.map(v=>({value:v,itemStyle:{color:v>0.4?'#E05555':color}})),barWidth:'70%'}]});
+  };
+  drift('driftChart','#4D9FFF');
+  /* latency */
+  const el=document.getElementById('latChart'); if(el){
+    const c=echarts.init(el,null,{renderer:'svg'});
+    const n=40,d=[]; for(let i=0;i<n;i++) d.push(+(280+Math.sin(i/3)*60+Math.random()*40).toFixed(0));
+    c.setOption({grid:{left:24,right:6,top:4,bottom:14},
+      xAxis:{type:'category',data:[...Array(n).keys()],axisLabel:{show:false},axisLine:{show:false},axisTick:{show:false}},
+      yAxis:{type:'value',axisLabel:{show:false},splitLine:{show:false},axisLine:{show:false},axisTick:{show:false}},
+      series:[{type:'line',data:d,smooth:true,showSymbol:false,lineStyle:{color:'#00D4AA',width:1.6},
+        areaStyle:{color:'#00D4AA22'}}]});
+  }
+})();
+
+window.addEventListener('resize',()=>{ document.querySelectorAll('[_echarts_instance_]').forEach(el=>{ const inst=echarts.getInstanceByDom(el); inst&&inst.resize();});});
+
+/* ============================================================
+ *  LIVE DATA — fetch from FastAPI backend and re-render charts
+ *  Endpoints: /api/ticker /api/quote /api/history
+ *             /api/indicators /api/forecast /api/movers /api/heatmap
+ * ============================================================ */
+const API = '';                 // same origin
+const STOCK = 'NVDA';           // featured stock
+const INDEX = '^GSPC';          // S&P 500
+
+const fmtNum  = (n,d=2)=> Number(n).toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmtPct  = p => (p>=0?'+':'') + Number(p).toFixed(2) + '%';
+const color   = p => p>=0 ? '#00D4AA' : '#E05555';
+
+async function jget(p){ const r = await fetch(API+p); if(!r.ok) throw new Error(p+' '+r.status); return r.json(); }
+
+function reinit(id){
+  const el = document.getElementById(id);
+  if(!el) return null;
+  const old = echarts.getInstanceByDom(el);
+  if(old) old.dispose();
+  return echarts.init(el,null,{renderer:'svg'});
+}
+
+/* --- 1. ticker strip --- */
+async function liveTicker(){
+  try{
+    const d = await jget('/api/ticker');
+    const html = d.items.concat(d.items).map(it=>`
+      <span class="inline-flex items-center gap-2">
+        <span class="text-muted">${it.sym}</span>
+        <span class="num">${fmtNum(it.price, it.price>1000?0:2)}</span>
+        <span class="num" style="color:${color(it.chg_pct)}">${fmtPct(it.chg_pct)}</span>
+        <span class="text-line">|</span>
+      </span>`).join('');
+    document.getElementById('tickerStrip').innerHTML = html;
+  }catch(e){ console.warn('ticker fail',e); }
+}
+
+/* --- 2. main index chart (S&P 500) --- */
+async function liveIndex(){
+  try{
+    const d = await jget('/api/history/'+encodeURIComponent(INDEX)+'?period=6mo&interval=1d');
+    const dates = d.candles.map(c=>c.t);
+    const close = d.candles.map(c=>c.c);
+    const vol   = d.candles.map(c=>c.v);
+    const c = reinit('mainChart'); if(!c) return;
+    c.setOption({
+      grid:[{left:54,right:24,top:16,height:'62%'},{left:54,right:24,top:'76%',height:'18%'}],
+      tooltip:{trigger:'axis',backgroundColor:'#0E0E15',borderColor:'#1F1F2B',textStyle:{color:'#E7E7F0',fontSize:11}},
+      xAxis:[{type:'category',data:dates,boundaryGap:false,...AXIS},
+             {type:'category',data:dates,gridIndex:1,axisLabel:{show:false},axisLine:{lineStyle:{color:'#2A2A3A'}},axisTick:{show:false}}],
+      yAxis:[{type:'value',scale:true,...AXIS},{type:'value',gridIndex:1,splitLine:{show:false},axisLabel:{show:false},axisLine:{show:false},axisTick:{show:false}}],
+      series:[
+        {type:'line',data:close,smooth:true,showSymbol:false,lineStyle:{color:'#4D9FFF',width:2},
+         areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#4D9FFF55'},{offset:1,color:'#4D9FFF00'}])}},
+        {type:'bar',xAxisIndex:1,yAxisIndex:1,data:vol,itemStyle:{color:'#1F2A3D'},barWidth:'60%'}
+      ]
+    });
+    // patch the header price text
+    const last = d.candles.at(-1).c, prev = d.candles.at(-2)?.c ?? last;
+    const ch = last - prev, p = ch/prev*100;
+    const head = document.querySelector('#markets .col-span-12 h2');
+    if(head) head.innerHTML = `${fmtNum(last)} <span class="text-[14px] num" style="color:${color(p)}">${(ch>=0?'+':'')+fmtNum(ch)} (${fmtPct(p)})</span>`;
+  }catch(e){ console.warn('index fail',e); }
+}
+
+/* --- 3. movers --- */
+async function liveMovers(){
+  try{
+    const d = await jget('/api/movers?limit=5');
+    const row = (r,c)=>`
+      <tr class="hover-row">
+        <td class="py-2"><div>${r.ticker}</div><div class="text-[10px] text-muted">${r.ticker}</div></td>
+        <td class="num">${fmtNum(r.price)}</td>
+        <td class="num" style="color:${c}">${(r.change>=0?'+':'')+fmtNum(r.change)}</td>
+        <td class="num" style="color:${c}">${fmtPct(r.change_pct)}</td>
+        <td class="text-right num text-muted">${(r.volume/1e6).toFixed(1)}M</td>
+      </tr>`;
+    const tables = document.querySelectorAll('section.grid.grid-cols-12 table tbody');
+    if(tables[0]) tables[0].innerHTML = d.gainers.map(r=>row(r,'#00D4AA')).join('');
+    if(tables[1]) tables[1].innerHTML = d.losers .map(r=>row(r,'#E05555')).join('');
+  }catch(e){ console.warn('movers fail',e); }
+}
+
+/* --- 4. heatmap --- */
+async function liveHeat(){
+  try{
+    const d = await jget('/api/heatmap');
+    const el = document.getElementById('heat'); if(!el) return;
+    el.innerHTML = d.items.map(it=>{
+      const v = it.change_pct, u = v>=0;
+      const intensity = Math.min(Math.abs(v)/3,1);
+      const bg = u ? `rgba(0,212,170,${0.18+intensity*0.72})`
+                   : `rgba(224,85,85,${0.18+intensity*0.72})`;
+      return `<div style="background:${bg}" title="${it.ticker} ${fmtPct(v)}">
+        <div class="font-display">${it.ticker}</div>
+        <div class="num text-[10px]" style="opacity:.9">${fmtPct(v)}</div>
+      </div>`;
+    }).join('');
+  }catch(e){ console.warn('heat fail',e); }
+}
+
+/* --- 5. stock analysis: quote + candles + volume --- */
+async function liveStock(){
+  try{
+    const [q, h] = await Promise.all([
+      jget('/api/quote/'+STOCK),
+      jget('/api/history/'+STOCK+'?period=6mo&interval=1d')
+    ]);
+    // header
+    const head = document.querySelector('#stock header .text-right');
+    if(head){
+      head.innerHTML = `
+        <div class="font-display text-[26px] num">${fmtNum(q.price)}
+          <span class="text-[14px]" style="color:${color(q.change_pct)}">${(q.change>=0?'+':'')+fmtNum(q.change)} (${fmtPct(q.change_pct)})</span>
+        </div>
+        <div class="text-[11px] text-muted">Volume ${(q.volume/1e6).toFixed(1)}M · O ${fmtNum(q.open)} · H ${fmtNum(q.high)} · L ${fmtNum(q.low)}</div>`;
+    }
+    // candles
+    const dates = h.candles.map(c=>c.t);
+    const ohlc  = h.candles.map(c=>[c.o, c.c, c.l, c.h]);
+    const vol   = h.candles.map(c=>({value:c.v, itemStyle:{color: c.c>=c.o ? '#00D4AA55':'#E0555555'}}));
+    // SMA
+    const sma = (xs,w)=>xs.map((_,i)=>{const s=Math.max(0,i-w+1),sl=xs.slice(s,i+1);return sl.reduce((a,b)=>a+b,0)/sl.length});
+    const closes = h.candles.map(c=>c.c);
+    const sma20  = sma(closes,20), sma50 = sma(closes,50);
+
+    const c = reinit('candleChart'); if(c){
+      c.setOption({
+        grid:{left:54,right:16,top:10,bottom:18},
+        tooltip:{trigger:'axis',backgroundColor:'#0E0E15',borderColor:'#1F1F2B',textStyle:{color:'#E7E7F0',fontSize:11}},
+        xAxis:{type:'category',data:dates,...AXIS,axisLabel:{...AXIS.axisLabel,fontSize:9}},
+        yAxis:{type:'value',scale:true,...AXIS},
+        series:[
+          {type:'candlestick',data:ohlc,itemStyle:{color:'#00D4AA',color0:'#E05555',borderColor:'#00D4AA',borderColor0:'#E05555'}},
+          {type:'line',data:sma20,smooth:true,showSymbol:false,lineStyle:{color:'#F5A524',width:1.4}},
+          {type:'line',data:sma50,smooth:true,showSymbol:false,lineStyle:{color:'#4D9FFF',width:1.4}}
+        ]
+      });
+    }
+    const v = reinit('volumeChart'); if(v){
+      v.setOption({grid:{left:54,right:16,top:4,bottom:14},
+        xAxis:{type:'category',data:dates,axisLabel:{show:false},axisLine:{lineStyle:{color:'#2A2A3A'}},axisTick:{show:false}},
+        yAxis:{type:'value',splitLine:{show:false},axisLabel:{show:false},axisLine:{show:false},axisTick:{show:false}},
+        series:[{type:'bar',data:vol,barWidth:'60%'}]});
+    }
+  }catch(e){ console.warn('stock fail',e); }
+}
+
+/* --- 6. indicators (MACD / RSI) --- */
+async function liveIndicators(){
+  try{
+    const d = await jget('/api/indicators/'+STOCK);
+    // slice last 80 bars for readability
+    const N = 80;
+    const cut = arr => arr.slice(-N);
+    const dates = cut(d.dates);
+    const macd  = cut(d.macd), sig = cut(d.signal), hist_ = cut(d.hist);
+    const rsi   = cut(d.rsi);
+
+    const m = reinit('macdChart');
+    if(m){
+      const histBars = hist_.map(v=>({value:+v.toFixed(3), itemStyle:{color: v>=0?'#00D4AA88':'#E0555588'}}));
+      m.setOption({grid:{left:34,right:8,top:6,bottom:14},
+        tooltip:{trigger:'axis',backgroundColor:'#0E0E15',borderColor:'#1F1F2B',textStyle:{color:'#E7E7F0',fontSize:10}},
+        xAxis:{type:'category',data:dates,...AXIS,axisLabel:{show:false}},
+        yAxis:{type:'value',...AXIS},
+        series:[
+          {type:'bar',data:histBars,barWidth:'70%'},
+          {type:'line',data:macd,smooth:true,showSymbol:false,lineStyle:{color:'#4D9FFF',width:1.4}},
+          {type:'line',data:sig, smooth:true,showSymbol:false,lineStyle:{color:'#F5A524',width:1.4}}
+        ]});
+    }
+    const r = reinit('rsiChart');
+    if(r){
+      r.setOption({grid:{left:34,right:8,top:6,bottom:14},
+        tooltip:{trigger:'axis',backgroundColor:'#0E0E15',borderColor:'#1F1F2B',textStyle:{color:'#E7E7F0',fontSize:10}},
+        xAxis:{type:'category',data:dates,...AXIS,axisLabel:{show:false}},
+        yAxis:{type:'value',min:0,max:100,...AXIS},
+        series:[{type:'line',data:rsi,smooth:true,showSymbol:false,lineStyle:{color:'#00D4AA',width:1.6},
+          areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#00D4AA44'},{offset:1,color:'#00D4AA00'}])},
+          markLine:{symbol:'none',silent:true,lineStyle:{color:'#7A7A8C66',type:'dashed'},
+            data:[{yAxis:70},{yAxis:30}]}}]});
+    }
+    // tile values in chips
+    const tagRsi  = document.querySelector('#stock .chip.bg-primary\\/15');
+    if(tagRsi){
+      const v = d.latest.rsi;
+      const cls = v>=70 ? 'bg-danger/15 text-danger' : v<=30 ? 'bg-secondary/15 text-secondary' : 'bg-primary/15 text-primary';
+      tagRsi.className = 'chip ' + cls;
+      tagRsi.textContent = `${v.toFixed(1)} · ${v>=70?'overbought':v<=30?'oversold':'neutral'}`;
+    }
+    const tagMacd = document.querySelector('#stock .chip.bg-secondary\\/15');
+    if(tagMacd){
+      const m1 = d.latest.macd, s1 = d.latest.signal;
+      const bullish = m1 > s1;
+      tagMacd.className = 'chip ' + (bullish?'bg-secondary/15 text-secondary':'bg-danger/15 text-danger');
+      tagMacd.textContent = bullish ? 'Bullish' : 'Bearish';
+    }
+  }catch(e){ console.warn('ind fail',e); }
+}
+
+/* --- 7. forecast fan --- */
+async function liveForecast(){
+  try{
+    const [h, f] = await Promise.all([
+      jget('/api/history/'+STOCK+'?period=3mo&interval=1d'),
+      jget('/api/forecast/'+STOCK+'?horizon=20')
+    ]);
+    const hist = h.candles.slice(-40).map(c=>c.c);
+    const fc   = f.forecast.map(x=>x.mean);
+    const up   = f.forecast.map(x=>x.hi);
+    const lo   = f.forecast.map(x=>x.lo);
+
+    const dates = h.candles.slice(-40).map(c=>c.t).concat(f.forecast.map(x=>'D+'+x.step));
+    const past  = hist.length, fut = fc.length;
+    const histLine = hist.concat(Array(fut).fill('-'));
+    const fcLine   = Array(past-1).fill('-').concat([hist[past-1]]).concat(fc);
+    const upline   = Array(past).fill('-').concat(up);
+    const loline   = Array(past).fill('-').concat(lo);
+
+    const c = reinit('forecastChart'); if(!c) return;
+    c.setOption({grid:{left:54,right:14,top:10,bottom:22},
+      tooltip:{trigger:'axis',backgroundColor:'#0E0E15',borderColor:'#1F1F2B',textStyle:{color:'#E7E7F0',fontSize:11}},
+      xAxis:{type:'category',data:dates,...AXIS,axisLabel:{...AXIS.axisLabel,fontSize:9}},
+      yAxis:{type:'value',scale:true,...AXIS},
+      series:[
+        {type:'line',data:loline,lineStyle:{opacity:0},stack:'band',symbol:'none'},
+        {type:'line',data:upline.map((v,i)=>v==='-'?'-':v-loline[i]),stack:'band',symbol:'none',
+          lineStyle:{opacity:0},areaStyle:{color:'#4D9FFF22'}},
+        {type:'line',data:histLine,smooth:true,showSymbol:false,lineStyle:{color:'#E7E7F0',width:1.6}},
+        {type:'line',data:fcLine,smooth:true,showSymbol:false,lineStyle:{color:'#4D9FFF',width:1.8,type:'dashed'}}
+      ]});
+  }catch(e){ console.warn('fc fail',e); }
+}
+
+/* boot live layer */
+liveTicker(); liveIndex(); liveMovers(); liveHeat();
+liveStock(); liveIndicators(); liveForecast();
+liveAnalyst();
+setInterval(liveTicker, 60_000);
+
+/* --- 8. AI Analyst (real XGBoost + SHAP) --- */
+async function liveAnalyst(){
+  try{
+    const d = await jget('/api/analyst/'+STOCK);
+    const n = d.narrative, e = d.explain, f = d.forecast;
+
+    // panel root (first card in #analyst is the AI Analyst card)
+    const panel = document.querySelector('#analyst > .card, #analyst .card.col-span-12.lg\\:col-span-7') || document.querySelector('#analyst').firstElementChild;
+    if(!panel) return;
+
+    // 1. conviction chip
+    const conviction = panel.querySelector('header .chip');
+    if(conviction){
+      conviction.textContent = 'Conviction ' + n.conviction.toFixed(2);
+      conviction.className = 'chip ' + (
+        n.stance==='constructive' ? 'bg-secondary/15 text-secondary' :
+        n.stance==='defensive'    ? 'bg-danger/15 text-danger'       :
+                                    'bg-primary/15 text-primary'
+      );
+    }
+
+    // 2. narrative body
+    const body = panel.querySelector('.mt-4');
+    if(body){
+      const up = n.drivers_up.map(d=>d.label.toLowerCase()).join(', ') || '—';
+      const dn = n.drivers_dn.map(d=>d.label.toLowerCase()).join(', ') || '—';
+      const stanceColor = n.stance==='constructive' ? 'text-secondary'
+                        : n.stance==='defensive'    ? 'text-danger' : 'text-primary';
+      body.innerHTML = `
+        <p><span class="${stanceColor}">Thesis.</span> ${n.summary}</p>
+        <p class="mt-3"><span class="text-secondary">Tailwinds.</span> ${up}.</p>
+        <p class="mt-3"><span class="text-danger">Headwinds.</span> ${dn}.</p>
+        <ul class="mt-3 space-y-1 text-[12px] text-muted">
+          ${n.bullets.map(b=>`<li>• ${b}</li>`).join('')}
+        </ul>`;
+    }
+
+    // 3. forecast tiles
+    const tiles = panel.querySelectorAll('.grid.grid-cols-3 > div');
+    const horizon5  = f.forecast[4]  || f.forecast.at(-1);
+    const horizon20 = f.forecast[19] || f.forecast.at(-1);
+    const tail = ((horizon20.lo / f.last_close) - 1) * 100;
+    const cards = [
+      ['Forecast (5d)',  ((horizon5.mean /f.last_close - 1)*100).toFixed(2)+'%', '#00D4AA', 'XGBoost · '+f.metrics.n_train+' bars'],
+      ['Forecast (20d)', ((horizon20.mean/f.last_close - 1)*100).toFixed(2)+'%', '#4D9FFF', 'CV dir acc '+(f.metrics.dir_acc*100).toFixed(0)+'%'],
+      ['Tail (90% lo)',  tail.toFixed(2)+'%',                                    '#E05555', 'σ residual band'],
+    ];
+    tiles.forEach((t,i)=>{
+      const [k,v,c,m] = cards[i] || [];
+      if(!k) return;
+      t.innerHTML = `
+        <div class="label">${k}</div>
+        <div class="font-display text-[20px] num" style="color:${c}">${(v[0]==='-'?'':'+')+v}</div>
+        <div class="text-[10px] text-muted">${m}</div>`;
+    });
+
+    // 4. SHAP bars
+    const shapEl = panel.querySelector('.mt-5 .space-y-2');
+    if(shapEl){
+      const maxAbs = Math.max(...e.top.map(c=>Math.abs(c.shap)), 0.001);
+      shapEl.innerHTML = e.top.map(c=>{
+        const pct = Math.abs(c.shap)/maxAbs * 100;  // % of half-width
+        const col = c.shap>=0 ? '#00D4AA' : '#E05555';
+        const dir = c.shap>=0 ? 'left:50%' : 'right:50%';
+        return `
+        <div class="flex items-center gap-3">
+          <div class="w-56 truncate text-muted">${c.label}</div>
+          <div class="flex-1 h-2 bg-line rounded relative">
+            <div class="absolute top-0 bottom-0 w-px bg-muted/40" style="left:50%"></div>
+            <div class="absolute top-0 bottom-0 shap-bar" style="${dir};width:${pct/2}%;background:${col}"></div>
+          </div>
+          <div class="w-16 text-right num" style="color:${col}">${(c.shap>=0?'+':'')+c.shap.toFixed(4)}</div>
+        </div>`;
+      }).join('');
+    }
+
+    // 5. badge on stock card
+    const aiScore = document.querySelector('#stock header .chip.bg-secondary\\/15');
+    if(aiScore){
+      const score = Math.round(50 + n.horizon['5d_pct']*5);
+      aiScore.textContent = 'AI Score ' + Math.max(0, Math.min(100, score));
+    }
+  }catch(err){ console.warn('analyst fail',err); }
+}
+</script>
+</body>
+</html>
