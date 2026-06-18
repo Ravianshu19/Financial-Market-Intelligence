@@ -31,7 +31,7 @@ def override_get_db():
 app.dependency_overrides[get_db] = override_get_db
 Base.metadata.create_all(bind=engine)
 
-async def test_endpoint(client: httpx.AsyncClient, path: str) -> float:
+async def measure_endpoint_latency(client: httpx.AsyncClient, path: str) -> float:
     """Helper to query endpoint and return response time in ms."""
     t0 = time.time()
     try:
@@ -101,7 +101,7 @@ async def run_load_test():
             tasks = []
             for i in range(total_requests):
                 path = paths[i % len(paths)]
-                tasks.append(test_endpoint(client, path))
+                tasks.append(measure_endpoint_latency(client, path))
                 
             durations = await asyncio.gather(*tasks)
             
