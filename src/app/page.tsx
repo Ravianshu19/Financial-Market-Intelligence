@@ -43,7 +43,7 @@ export default function Page() {
   return (
     <div className="min-h-screen flex flex-col bg-bg text-ink relative">
       {/* Background visual details */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent pointer-events-none z-0" />
+      <div className="absolute inset-0 bg-hero-glow pointer-events-none z-0" />
       <div className="grid-bg absolute inset-0 opacity-40 pointer-events-none z-0" />
 
       {/* TOPBAR NAVIGATION & MARQUEE TICKER */}

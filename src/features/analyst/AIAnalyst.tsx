@@ -98,8 +98,6 @@ export default function AIAnalyst() {
     <div className="space-y-6">
       {/* 1. DAILY BRIEFING BOARD */}
       <section className="card p-6 bg-card border border-line rounded-xl relative overflow-hidden">
-        {/* Soft background glows */}
-        <div className="absolute top-0 right-0 h-40 w-40 rounded-full bg-primary/5 blur-2xl pointer-events-none" />
         
         <header className="flex items-center justify-between flex-wrap gap-4 border-b border-line pb-4 mb-4 font-mono">
           <div className="flex items-center gap-2.5">

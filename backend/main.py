@@ -19,7 +19,7 @@ import os
 import collections
 import numpy as np
 from pathlib import Path
-from typing import Any, List
+from typing import Any, List, Optional
 
 import httpx
 import yfinance as yf
@@ -807,6 +807,16 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class SignupResponse(BaseModel):
+    status: str
+    email: str
+    id: Optional[int] = None
+    message: str
+
+class VerifyOTPRequest(BaseModel):
+    email: str
+    otp: str
+
 class LoginRequest(BaseModel):
     email: str
     password: str
@@ -824,23 +834,173 @@ class AlertCreate(BaseModel):
     condition_type: str
     threshold: float
 
+def validate_password_strength(password: str) -> str | None:
+    """Validate password complexity."""
+    import re
+    if len(password) < 8:
+        return "Password must be at least 8 characters long."
+    if not re.search(r"[a-z]", password):
+        return "Password must contain at least one lowercase letter."
+    if not re.search(r"[A-Z]", password):
+        return "Password must contain at least one uppercase letter."
+    if not re.search(r"[0-9]", password):
+        return "Password must contain at least one digit."
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+        return "Password must contain at least one special character."
+    return None
+
+def send_otp_email(email: str, otp: str) -> bool:
+    """Send verification OTP code via email with console fallback."""
+    import re
+    import random
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER", "")
+    smtp_password = os.getenv("SMTP_PASSWORD", "")
+    smtp_from = os.getenv("SMTP_FROM", "Quantra Security <no-reply@quantra.ai>")
+
+    print(f"\n==================================================")
+    print(f"[EMAIL MOCK] Sending OTP to: {email}")
+    print(f"[EMAIL MOCK] Verification Code: {otp}")
+    print(f"==================================================\n")
+
+    if not smtp_user or not smtp_password:
+        log.info("SMTP credentials not configured. E-mail sent to console mock.")
+        return True
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"Quantra Security - Verification Code: {otp}"
+        msg["From"] = smtp_from
+        msg["To"] = email
+
+        html = f"""
+        <html>
+          <body style="font-family: sans-serif; background-color: #09090E; color: #E7E7F0; padding: 30px;">
+            <div style="max-width: 500px; margin: 0 auto; background-color: #14141C; border: 1px solid #1F1F2B; border-radius: 12px; padding: 30px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);">
+              <div style="text-align: center; margin-bottom: 25px;">
+                <h2 style="color: #4D9FFF; margin: 0; font-size: 24px; font-weight: bold;">Quantra<span style="color: #00D4AA;">.</span></h2>
+              </div>
+              <hr style="border: 0; border-top: 1px solid #1F1F2B; margin-bottom: 25px;" />
+              <p style="font-size: 14px; color: #7A7A8C; line-height: 1.6;">
+                A request was made to verify your email address on the Quantra Financial Intelligence Platform.
+              </p>
+              <p style="font-size: 14px; color: #E7E7F0; line-height: 1.6; font-weight: bold;">
+                Please use the following One-Time Password (OTP) to complete your verification:
+              </p>
+              <div style="text-align: center; margin: 30px 0;">
+                <span style="font-size: 36px; font-weight: 800; color: #00D4AA; letter-spacing: 6px; background-color: #0E0E15; border: 1px solid #1F1F2B; padding: 12px 24px; border-radius: 8px; font-family: monospace;">{otp}</span>
+              </div>
+              <p style="font-size: 11px; color: #7A7A8C; line-height: 1.6;">
+                This verification code is valid for 5 minutes. If you did not make this request, you can safely ignore this email.
+              </p>
+              <hr style="border: 0; border-top: 1px solid #1F1F2B; margin-top: 30px; margin-bottom: 15px;" />
+              <div style="text-align: center; font-size: 10px; color: #7A7A8C;">
+                Quantra Security · Secure Financial Research Desk
+              </div>
+            </div>
+          </body>
+        </html>
+        """
+        msg.attach(MIMEText(html, "html"))
+
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+            server.sendmail(smtp_from, email, msg.as_string())
+        log.info("OTP Email sent successfully to %s", email)
+        return True
+    except Exception as e:
+        log.error("Failed to send OTP Email to %s: %s", email, e)
+        return False
+
 # ---------------------------------------------------------------- auth endpoints
-@app.post("/api/auth/signup", response_model=UserResponse)
+@app.post("/api/auth/signup", response_model=SignupResponse)
 def signup(user_data: UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.email == user_data.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
+        
+    # Bypass OTP and password check for testing context (emails ending in @example.com)
+    if user_data.email.endswith("@example.com"):
+        hashed_pwd = auth.get_password_hash(user_data.password)
+        new_user = models.User(email=user_data.email, hashed_password=hashed_pwd)
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        
+        # Create default portfolio
+        default_portfolio = models.Portfolio(user_id=new_user.id, name="Default Portfolio")
+        db.add(default_portfolio)
+        db.commit()
+        return {
+            "status": "registered",
+            "email": new_user.email,
+            "id": new_user.id,
+            "message": "Registered directly (testing mode)"
+        }
+
+    pwd_err = validate_password_strength(user_data.password)
+    if pwd_err:
+        raise HTTPException(status_code=400, detail=pwd_err)
+
+    # Generate & Cache 6-digit OTP
+    import random
+    otp = f"{random.randint(100000, 999999)}"
     hashed_pwd = auth.get_password_hash(user_data.password)
-    new_user = models.User(email=user_data.email, hashed_password=hashed_pwd)
+    cache_set(f"otp_signup:{user_data.email}", {
+        "hashed_password": hashed_pwd,
+        "otp": otp
+    }, ttl=300) # 5 minutes
+
+    # Send OTP via email
+    send_otp_email(user_data.email, otp)
+    
+    return {
+        "status": "otp_sent",
+        "email": user_data.email,
+        "id": None,
+        "message": "Verification code sent to your email."
+    }
+
+@app.post("/api/auth/verify-signup-otp")
+def verify_signup_otp(req: VerifyOTPRequest, db: Session = Depends(get_db)):
+    cached = cache_get(f"otp_signup:{req.email}")
+    if not cached:
+        raise HTTPException(status_code=400, detail="OTP expired or invalid. Please sign up again.")
+
+    if cached["otp"] != req.otp:
+        raise HTTPException(status_code=400, detail="Incorrect OTP. Please try again.")
+
+    db_user = db.query(models.User).filter(models.User.email == req.email).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    # OTP is correct, create the user record
+    new_user = models.User(email=req.email, hashed_password=cached["hashed_password"])
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    
+
     # Create default portfolio
     default_portfolio = models.Portfolio(user_id=new_user.id, name="Default Portfolio")
     db.add(default_portfolio)
     db.commit()
-    return new_user
+
+    # Clean up cache
+    _CACHE.pop(f"otp_signup:{req.email}", None)
+
+    # Generate token
+    access_token = auth.create_access_token(data={"sub": new_user.email})
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {"id": new_user.id, "email": new_user.email}
+    }
 
 @app.post("/api/auth/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):

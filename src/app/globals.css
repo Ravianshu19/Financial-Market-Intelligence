@@ -34,6 +34,14 @@ body {
   background-size: 22px 22px;
 }
 
+.bg-hero-glow {
+  background: radial-gradient(ellipse at top, rgba(77, 159, 255, 0.06), transparent 70%);
+}
+
+.bg-auth-glow {
+  background: radial-gradient(ellipse at top, rgba(77, 159, 255, 0.12), transparent 70%);
+}
+
 .gradient-text {
   background: linear-gradient(120deg, #ffffff 0%, #4D9FFF 55%, #00D4AA 100%);
   -webkit-background-clip: text;

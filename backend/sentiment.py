@@ -107,10 +107,46 @@ def analyze_sentiment(ticker: str) -> dict[str, Any]:
     neu_count = 0
 
     for item in news_items:
-        title = item.get("title", "")
-        publisher = item.get("publisher", "Unknown")
-        pub_time = item.get("providerPublishTime", 0)
-        link = item.get("link", "#")
+        # Support both new yfinance nested structure and older flat dictionary
+        content = item.get("content", {}) if "content" in item else item
+        
+        title = content.get("title", "")
+        if not title:
+            continue  # Skip items with empty titles
+            
+        provider_obj = content.get("provider", {})
+        publisher = provider_obj.get("displayName") if isinstance(provider_obj, dict) else None
+        if not publisher:
+            publisher = content.get("publisher", "Unknown")
+            
+        pub_time = content.get("providerPublishTime")
+        if pub_time is None:
+            pub_date_str = content.get("pubDate")
+            if pub_date_str:
+                try:
+                    from datetime import datetime
+                    dt = datetime.strptime(pub_date_str.replace("Z", "+00:00"), "%Y-%m-%dT%H:%M:%S%z")
+                    pub_time = int(dt.timestamp())
+                except Exception:
+                    pub_time = 0
+            else:
+                pub_time = 0
+        else:
+            try:
+                pub_time = int(pub_time)
+            except Exception:
+                pub_time = 0
+                
+        link = None
+        click_url = content.get("clickThroughUrl")
+        if isinstance(click_url, dict):
+            link = click_url.get("url")
+        if not link:
+            canon_url = content.get("canonicalUrl")
+            if isinstance(canon_url, dict):
+                link = canon_url.get("url")
+        if not link:
+            link = content.get("link", "#")
         
         score = 0.0
         label = "neutral"

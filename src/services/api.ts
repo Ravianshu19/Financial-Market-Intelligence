@@ -260,6 +260,19 @@ export interface UserResponse {
   email: string;
 }
 
+export interface SignupResponse {
+  status: string;
+  email: string;
+  id?: number;
+  message: string;
+}
+
+export interface VerifyOtpResponse {
+  access_token: string;
+  token_type: string;
+  user: UserResponse;
+}
+
 export interface LoginResponse {
   access_token: string;
   token_type: string;
@@ -317,7 +330,8 @@ export interface AlertTriggerResponse {
 
 export const api = {
   // Auth
-  signup: (body: UserCredentials) => request<UserResponse>("/api/auth/signup", { method: "POST", body: JSON.stringify(body) }),
+  signup: (body: UserCredentials) => request<SignupResponse>("/api/auth/signup", { method: "POST", body: JSON.stringify(body) }),
+  verifySignupOtp: (body: { email: string; otp: string }) => request<VerifyOtpResponse>("/api/auth/verify-signup-otp", { method: "POST", body: JSON.stringify(body) }),
   login: (body: UserCredentials) => request<LoginResponse>("/api/auth/login-json", { method: "POST", body: JSON.stringify(body) }),
   me: () => request<UserResponse>("/api/auth/me"),
 

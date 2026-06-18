@@ -14,7 +14,7 @@ import {
   BarChart, 
   Bar 
 } from "recharts";
-import { TrendingUp, TrendingDown, RefreshCw, BarChart2, Flame, Grid } from "lucide-react";
+import { TrendingUp, TrendingDown, RefreshCw, BarChart2, Flame, Grid, Newspaper } from "lucide-react";
 
 export default function MarketOverview() {
   const { setSelectedSymbol, setActiveView, token } = useApp();
@@ -38,6 +38,13 @@ export default function MarketOverview() {
     queryKey: ["heatmap"],
     queryFn: () => api.getHeatmap(),
     refetchInterval: 120000,
+  });
+
+  // Get broad market news/sentiment using S&P 500 (^GSPC)
+  const { data: sentiment, isLoading: sentimentLoading } = useQuery({
+    queryKey: ["marketSentiment"],
+    queryFn: () => api.getSentiment("^GSPC"),
+    refetchInterval: 300000,
   });
 
   // Format historical candles for Recharts
@@ -73,7 +80,6 @@ export default function MarketOverview() {
     <div className="space-y-6">
       {/* 1. HERO BRANDING & STATS PANEL */}
       <section className="card softgrad p-6 md:p-8 relative overflow-hidden rounded-xl border border-line">
-        <div className="absolute -top-20 -right-20 h-60 w-60 rounded-full bg-primary/5 blur-3xl pointer-events-none" />
         
         <div className="grid md:grid-cols-12 gap-6 items-end">
           <div className="md:col-span-8 space-y-4">
@@ -425,6 +431,98 @@ export default function MarketOverview() {
                 </div>
               );
             })}
+          </div>
+        )}
+      </section>
+
+      {/* 5. REAL-TIME MARKET NEWS & SENTIMENT DESK */}
+      <section className="card p-5 bg-card border border-line rounded-xl space-y-4 font-mono">
+        <header className="flex justify-between items-center border-b border-line pb-3">
+          <div className="label text-[9px] text-muted-text font-bold uppercase tracking-widest flex items-center gap-1.5">
+            <Newspaper className="h-3.5 w-3.5 text-primary" />
+            Real-time Market News & Sentiment (FinBERT)
+          </div>
+          {sentiment && (
+            <span className={`chip text-[9px] px-2 py-0.5 rounded font-bold uppercase border ${
+              sentiment.label === "positive" 
+                ? "bg-secondary/15 text-secondary border-secondary/20" 
+                : sentiment.label === "negative" 
+                  ? "bg-danger/15 text-danger border-danger/20" 
+                  : "bg-primary/10 text-primary border-primary/20"
+            }`}>
+              Overall: {sentiment.label.toUpperCase()} ({(sentiment.score >= 0 ? "+" : "") + sentiment.score.toFixed(2)})
+            </span>
+          )}
+        </header>
+
+        {sentimentLoading ? (
+          <div className="py-12 text-center text-muted-text text-xs">Loading market sentiment feed...</div>
+        ) : !sentiment?.news || sentiment.news.length === 0 ? (
+          <div className="py-12 text-center text-muted-text text-xs">
+            No market news sentiment signals found in the last 24h.
+          </div>
+        ) : (
+          <div className="grid grid-cols-12 gap-6">
+            {/* Distribution chart/summary */}
+            <div className="col-span-12 md:col-span-4 space-y-4 border-r border-line/30 pr-0 md:pr-6">
+              <h4 className="text-xs font-bold text-ink uppercase">Sentiment Distribution</h4>
+              <div className="space-y-3">
+                {[
+                  { label: "Positive", val: sentiment.sentiment_distribution.positive, color: "var(--color-secondary)" },
+                  { label: "Neutral", val: sentiment.sentiment_distribution.neutral, color: "var(--color-primary)" },
+                  { label: "Negative", val: sentiment.sentiment_distribution.negative, color: "var(--color-danger)" }
+                ].map((s) => (
+                  <div key={s.label} className="text-[10px] space-y-1">
+                    <div className="flex justify-between font-semibold">
+                      <span className="text-muted-text">{s.label}</span>
+                      <span className="text-ink">{Math.round(s.val)}%</span>
+                    </div>
+                    <div className="h-1.5 bg-line rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${s.val}%`, backgroundColor: s.color }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="p-3 bg-panel/30 border border-line rounded-lg text-[10px] text-muted-text leading-relaxed">
+                <span className="font-bold text-ink uppercase block mb-1">Broad-Market NLP Strategy</span>
+                Incoming financial headlines from broad-market streams are processed in real-time by the FinBERT sentiment model. Scores above +0.08 indicate a positive/bullish market mood, while scores below -0.08 indicate warning signs.
+              </div>
+            </div>
+
+            {/* News List */}
+            <div className="col-span-12 md:col-span-8 space-y-3 max-h-[350px] overflow-y-auto pr-2 scroll-hide">
+              {sentiment.news.map((item, idx) => (
+                <div key={idx} className="p-3.5 bg-panel/20 border border-line/50 hover:border-line hover:bg-panel/40 rounded-xl transition-all flex justify-between gap-4">
+                  <div className="space-y-2 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[9px] text-muted-text uppercase font-semibold">{item.publisher}</span>
+                      <span className="text-[9px] text-muted-text">·</span>
+                      <span className="text-[9px] text-muted-text">{new Date(item.date * 1000).toLocaleDateString()}</span>
+                    </div>
+                    <a 
+                      href={item.link} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="text-xs font-bold text-ink hover:text-primary hover:underline transition-colors line-clamp-2"
+                    >
+                      {item.title}
+                    </a>
+                  </div>
+                  <div className="flex flex-col items-end justify-center min-w-[70px]">
+                    <span className={`chip text-[9px] px-1.5 py-0.2 rounded font-bold uppercase border ${
+                      item.label === "positive" 
+                        ? "bg-secondary/10 text-secondary border-secondary/20" 
+                        : item.label === "negative" 
+                          ? "bg-danger/10 text-danger border-danger/20" 
+                          : "bg-line text-muted-text border-line"
+                    }`}>
+                      {item.label}
+                    </span>
+                    <span className="text-[8px] text-muted-text mt-1.5 font-mono">Score: {item.score >= 0 ? "+" : ""}{item.score.toFixed(2)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </section>
