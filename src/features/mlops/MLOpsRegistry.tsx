@@ -1,35 +1,50 @@
 "use client";
 
 import React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/services/api";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Database, RefreshCw, BarChart2, ShieldAlert, Cpu } from "lucide-react";
 
-// Generate mock drift stats (40 runs)
-const driftData = Array.from({ length: 40 }, (_, idx) => {
-  const val = Number((Math.abs(Math.sin(idx / 4)) * 0.3 + Math.random() * 0.2).toFixed(2));
-  return {
-    run: `R-${40 - idx}`,
-    drift: val,
-    isDriftAlert: val > 0.4
-  };
-});
-
-// Generate mock latency stats (40 requests, between 250ms and 360ms)
-const latencyData = Array.from({ length: 40 }, (_, idx) => ({
-  req: `Q-${40 - idx}`,
-  latency: Number((280 + Math.sin(idx / 3) * 45 + Math.random() * 35).toFixed(0))
-}));
-
 export default function MLOpsRegistry() {
+  const { data: registeredModels = [], isLoading: modelsLoading } = useQuery({
+    queryKey: ["mlops-models"],
+    queryFn: () => api.getMlopsModels(),
+    refetchInterval: 30000,
+  });
 
-  // Registered Model versions logs
-  const registeredModels = [
-    { name: "forecast_nvda", version: "v32", stage: "Production", metric: "MAE 0.91%", color: "#00D4AA" },
-    { name: "forecast_spy", version: "v18", stage: "Production", metric: "MAE 0.42%", color: "#00D4AA" },
-    { name: "sentiment_finbert", version: "v11", stage: "Production", metric: "F1 0.88", color: "#00D4AA" },
-    { name: "regime_hmm", version: "v05", stage: "Staging", metric: "AUC 0.79", color: "#4D9FFF" },
-    { name: "risk_var_lstm", version: "v07", stage: "Shadow", metric: "VaR cov 94%", color: "#F5A524" },
-    { name: "anomaly_isof", version: "v02", stage: "Staging", metric: "P@5 0.81", color: "#4D9FFF" },
+  const { data: driftData = [], isLoading: driftLoading } = useQuery({
+    queryKey: ["mlops-drift"],
+    queryFn: () => api.getMlopsDrift(),
+    refetchInterval: 30000,
+  });
+
+  const { data: latencyData = [], isLoading: latencyLoading } = useQuery({
+    queryKey: ["mlops-latency"],
+    queryFn: () => api.getMlopsLatency(),
+    refetchInterval: 30000,
+  });
+
+  if (modelsLoading || driftLoading || latencyLoading) {
+    return (
+      <div className="card p-12 flex flex-col items-center justify-center text-muted-text text-sm font-mono border border-line bg-card rounded-xl">
+        <RefreshCw className="h-6 w-6 animate-spin mb-3 text-primary" />
+        Retrieving active registry schemas and tracking telemetry from MLflow registry...
+      </div>
+    );
+  }
+
+  // Calculate average latency
+  const avgLatency = latencyData.length > 0 
+    ? Math.round(latencyData.reduce((acc, curr) => acc + curr.latency, 0) / latencyData.length)
+    : 142;
+
+  const driftAlerts = driftData.filter((d) => d.isDriftAlert).length;
+
+  const statsItems = [
+    { k: "Registered Models", v: String(registeredModels.length), s: "XGBoost + LSTM" },
+    { k: "Active in Prod", v: String(registeredModels.filter(m => m.stage === "Production").length), s: `${avgLatency}ms average response` },
+    { k: "Feature Drift Alerts", v: String(driftAlerts), s: driftAlerts > 0 ? `${driftAlerts} anomaly detected` : "No anomalies detected" }
   ];
 
   return (
@@ -52,11 +67,7 @@ export default function MLOpsRegistry() {
 
       {/* Overview Stat tiles */}
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono">
-        {[
-          { k: "Registered Models", v: "42", s: "XGBoost + LSTM" },
-          { k: "Active in Prod", v: "9", s: "142ms average response" },
-          { k: "Feature Drift Alerts", v: "1", s: "1 anomaly detected (forecast_nvda)" }
-        ].map((item) => (
+        {statsItems.map((item) => (
           <div key={item.k} className="card bg-panel/30 border border-line/40 p-4 rounded-xl">
             <div className="label text-[9px] text-muted-text font-bold uppercase">{item.k}</div>
             <div className="text-2xl font-bold text-ink mt-1">{item.v}</div>
@@ -129,7 +140,7 @@ export default function MLOpsRegistry() {
           <div className="card p-4 bg-card border border-line rounded-xl space-y-3 font-mono">
             <div className="label text-[8px] text-muted-text font-bold uppercase tracking-wider flex justify-between border-b border-line pb-2">
               <span>p95 Latency (ms)</span>
-              <span className="text-secondary font-bold text-[8px]">142ms Avg</span>
+              <span className="text-secondary font-bold text-[8px]">{avgLatency}ms Avg</span>
             </div>
             
             <div className="h-[110px] w-full">

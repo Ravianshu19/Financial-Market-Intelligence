@@ -73,6 +73,66 @@ export interface StockQuote {
   prev_close: number;
   market_cap: number;
   currency: string;
+  fundamentals?: {
+    pe_ttm: number;
+    fwd_pe: number;
+    peg_ratio: number;
+    ev_ebitda: number;
+    gross_margin: number;
+    op_margin: number;
+    roe: number;
+    debt_ebitda: number;
+    rev_growth: number;
+    eps_growth: number;
+    fcf_yield: number;
+    beta: number;
+    analyst_rating: string;
+    analyst_score: number;
+    analyst_count: number;
+    target_low: number;
+    target_mean: number;
+    target_high: number;
+  };
+}
+
+export interface MlopsModel {
+  name: string;
+  version: string;
+  stage: string;
+  metric: string;
+  color: string;
+}
+
+export interface DriftItem {
+  run: string;
+  drift: number;
+  isDriftAlert: boolean;
+}
+
+export interface LatencyItem {
+  req: string;
+  latency: number;
+}
+
+export interface SentimentNewsItem {
+  title: string;
+  publisher: string;
+  date: number;
+  link: string;
+  score: number;
+  label: "positive" | "negative" | "neutral";
+}
+
+export interface SentimentResponse {
+  ticker: string;
+  score: number;
+  label: "positive" | "negative" | "neutral";
+  sentiment_distribution: {
+    positive: number;
+    neutral: number;
+    negative: number;
+  };
+  news: SentimentNewsItem[];
 }
 
 export interface Candle {
@@ -291,4 +351,10 @@ export const api = {
     request<AlertRule>("/api/alerts", { method: "POST", body: JSON.stringify({ ticker, condition_type: conditionType, threshold }) }),
   deleteAlert: (id: number) => request<GenericStatusResponse>(`/api/alerts/${id}`, { method: "DELETE" }),
   triggerAlert: (id: number) => request<AlertTriggerResponse>(`/api/alerts/${id}/trigger`, { method: "POST" }),
+
+  // Sentiment & MLOps
+  getSentiment: (ticker: string) => request<SentimentResponse>(`/api/sentiment/${encodeURIComponent(ticker)}`),
+  getMlopsModels: () => request<MlopsModel[]>("/api/mlops/models"),
+  getMlopsDrift: () => request<DriftItem[]>("/api/mlops/drift"),
+  getMlopsLatency: () => request<LatencyItem[]>("/api/mlops/latency"),
 };

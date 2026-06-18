@@ -1,36 +1,145 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Quantra — Financial Market Intelligence Platform
 
-## Getting Started
+Quantra is a state-of-the-art multi-factor research desk and automated forecasting system. It fuses XGBoost prediction models, SHAP explainability attributions, news sentiment analysis, technical indicators, and real-time risk analytics (Value-at-Risk) into a high-performance terminal dashboard.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 🏛️ System Architecture
+
+```mermaid
+graph TD
+    A[Next.js 16 Frontend App] -->|Relative Proxy /api/| B[FastAPI Backend Server]
+    B -->|Fetch Market Data| C(Yahoo Finance API)
+    B -->|User Auth & Portfolio CRUD| D[(SQLite DB)]
+    B -->|Model Telemetry & Versioning| E[(MLflow Tracking DB)]
+    B -->|Sentiment Analysis| F[FinBERT / Lexical Fallback]
+    B -->|Feature Engineering| G[XGBoost Forecaster]
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Key Technical Phases
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Frontend App Router Migration**: Modular feature-based React architecture using TypeScript, Tailwind CSS (v4), TanStack Query, and Recharts.
+2. **FastAPI Backend Services**: Multi-threaded SQLite/SQLAlchemy database layer with user watchlist, portfolio allocations, and price-triggered alerts.
+3. **User Auth & Isolation**: Strict JWT authentication with secure passwords hashed via `bcrypt==4.0.1`.
+4. **Machine Learning Pipeline**: XGBoost regressors trained on 2 years of OHLCV daily data. Forecasts walk forward iteratively with confidence intervals.
+5. **Explainability & Attribution**: SHAP tree-explainers analyze indicator drivers (RSI, SMA, realised volatility) behind model predictions.
+6. **Sentiment Desk**: FinBERT transformer model pipeline analyzing market news headlines with a robust lexical keyword analyzer fallback.
+7. **MLOps Registry & Drift Checking**: Pipeline metrics, parameters, and models logged to local SQLite-backed MLflow instances. Feature drift (Population Stability Index) measured on rolling windows.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 🚀 Getting Started
 
-To learn more about Next.js, take a look at the following resources:
+### Prerequisites
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Python**: 3.9+
+- **Node.js**: 18+ (LTS recommended)
+- **Docker & Docker Compose** (Optional, for containerized run)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Environment Configuration
 
-## Deploy on Vercel
+Create a `.env` file in the root directory (refer to `.env.example`):
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+DATABASE_URL=sqlite:///./quantra.db
+SECRET_KEY=generate-a-strong-random-key-in-production
+ACCESS_TOKEN_EXPIRE_MINUTES=1440
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 💻 Local Development Setup
+
+### 1. Running the FastAPI Backend
+
+Create a python virtual environment, install requirements, and boot the server:
+
+```bash
+# Navigate to project and create virtualenv
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install backend dependencies
+pip install -r backend/requirements.txt
+
+# Run migrations
+alembic upgrade head
+
+# Start FastAPI server on port 8000
+PYTHONPATH=. uvicorn backend.main:app --reload --port 8000
+```
+
+*Backend Swagger documentation will be available at [http://localhost:8000/docs](http://localhost:8000/docs).*
+
+### 2. Running the Next.js Frontend
+
+Open a new terminal tab, install npm packages, and boot the dev server:
+
+```bash
+# Install packages
+npm install
+
+# Start development client on port 3000
+npm run dev
+```
+
+*Open [http://localhost:3000](http://localhost:3000) to view the terminal research desk. Live proxy rewrites route all client `/api` queries to the backend automatically.*
+
+---
+
+## 🐋 Containerized Deployment (Docker Compose)
+
+To run the entire multi-service stack with a single command:
+
+```bash
+# Build and run containers
+docker-compose up --build
+```
+
+The frontend will bind to [http://localhost:3000](http://localhost:3000) and the backend will bind to [http://localhost:8000](http://localhost:8000).
+
+---
+
+## 📊 MLOps, MLflow & Drift Audits
+
+### MLflow Tracking Dashboard
+
+Every model training run logs features, cross-validation parameters, and metrics to `mlflow.db`. To view the tracking server:
+
+```bash
+# Launch the MLflow UI pointing to the SQLite backend
+mlflow ui --backend-store-uri sqlite:///mlflow.db
+```
+
+*Open [http://localhost:5000](http://localhost:5000) to inspect parameters, accuracy logs, and compare runs.*
+
+### Feature Drift Auditing
+
+Run the population stability index checking script:
+
+```bash
+# Calculate PSI covariate shift on NVDA features (or another ticker)
+python mlops/drift_check.py NVDA
+```
+
+---
+
+## 🧪 Testing
+
+To run the full backend database, isolation, and integration test suite:
+
+```bash
+# Run backend tests
+PYTHONPATH=. pytest backend/
+```
+
+To run frontend TypeScript validation and builds:
+
+```bash
+# Check TS compilation
+npx tsc --noEmit
+
+# Compile production bundle
+npm run build
+```

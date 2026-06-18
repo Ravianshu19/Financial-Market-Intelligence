@@ -43,6 +43,13 @@ except Exception as e:
     SHAP_AVAILABLE = False
     logging.getLogger("quantra.ml").warning("SHAP library import failed: %s. Falling back to heuristic SHAP attribution.", e)
 
+MLFLOW_AVAILABLE = True
+try:
+    import mlflow
+except Exception as e:
+    MLFLOW_AVAILABLE = False
+    logging.getLogger("quantra.ml").warning("MLflow library import failed: %s. Falling back to standard logging.", e)
+
 log = logging.getLogger("quantra.ml")
 
 # ---------------------------------------------------------------- features
@@ -141,7 +148,7 @@ _MODEL_CACHE: dict[str, tuple[float, TrainedModel]] = {}
 _MODEL_TTL = 60 * 60  # 1 hour
 
 
-def _train(history: pd.DataFrame) -> TrainedModel:
+def _train(history: pd.DataFrame, ticker: str) -> TrainedModel:
     feat = build_features(history).dropna()
     if len(feat) < 120:
         raise ValueError(f"insufficient training rows: {len(feat)}")
@@ -179,6 +186,34 @@ def _train(history: pd.DataFrame) -> TrainedModel:
         "rmse_is": float(math.sqrt(mean_squared_error(y, in_sample))),
         "n_train": int(len(X)),
     }
+
+    if MLFLOW_AVAILABLE:
+        try:
+            mlflow.set_tracking_uri("sqlite:///mlflow.db")
+            mlflow.set_experiment("Quantra_Market_Intelligence")
+            with mlflow.start_run(run_name=f"train_{ticker.upper()}_{int(time.time())}"):
+                mlflow.log_param("ticker", ticker.upper())
+                mlflow.log_param("n_estimators", 400)
+                mlflow.log_param("max_depth", 4)
+                mlflow.log_param("learning_rate", 0.05)
+                mlflow.log_param("n_train", len(X))
+                
+                for key, val in metrics.items():
+                    mlflow.log_metric(key, val)
+                
+                if XGBOOST_AVAILABLE:
+                    try:
+                        import mlflow.xgboost
+                        mlflow.xgboost.log_model(
+                            xgb_model=final, 
+                            artifact_path="model",
+                            registered_model_name=f"forecast_{ticker.lower()}"
+                        )
+                    except Exception as ex:
+                        log.warning("mlflow xgboost model logging skipped: %s", ex)
+        except Exception as e:
+            log.warning("mlflow run logging failed: %s", e)
+
     return TrainedModel(
         model=final,
         feature_cols=FEATURES,
@@ -203,7 +238,7 @@ def get_model(ticker: str) -> TrainedModel:
     hist = hist.dropna(subset=["Close"])
     if hist.empty:
         raise ValueError(f"no history for {ticker}")
-    tm = _train(hist)
+    tm = _train(hist, ticker)
     _MODEL_CACHE[ticker] = (time.time(), tm)
     log.info("trained %s in %.2fs · mae_cv=%.4f dir=%.2f%%",
              ticker, time.time() - t0, tm.metrics["mae_cv"], 100 * tm.metrics["dir_acc"])

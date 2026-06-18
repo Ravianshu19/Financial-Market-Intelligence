@@ -76,14 +76,40 @@ export default function StockAnalysis() {
   const fmtPct = (p: number) => (p >= 0 ? "+" : "") + (p || 0).toFixed(2) + "%";
   const color = (p: number) => p >= 0 ? "text-secondary" : "text-danger";
 
-  // Consensus Split (NVDA-oriented megacap representation)
+  const f = quote?.fundamentals || {
+    pe_ttm: 72.4,
+    fwd_pe: 38.1,
+    peg_ratio: 1.42,
+    ev_ebitda: 64.8,
+    gross_margin: 0.753,
+    op_margin: 0.624,
+    roe: 1.034,
+    debt_ebitda: -0.62,
+    rev_growth: 1.22,
+    eps_growth: 1.68,
+    fcf_yield: 0.014,
+    beta: 1.71,
+    analyst_rating: "Strong Buy",
+    analyst_score: 4.6,
+    analyst_count: 47,
+    target_low: 840,
+    target_mean: 1210,
+    target_high: 1500,
+  };
+
+  const totalAnalysts = f.analyst_count;
+  const scoreRatio = (f.analyst_score - 1) / 4;
+  const strongBuyCount = Math.round(totalAnalysts * Math.max(0, scoreRatio - 0.2) * 1.25);
+  const buyCount = Math.round(totalAnalysts * Math.max(0, 0.8 - Math.abs(scoreRatio - 0.7)) * 0.85);
+  const holdCount = Math.round(totalAnalysts * Math.max(0, 0.4 - Math.abs(scoreRatio - 0.4)) * 0.65);
+  const sellCount = Math.max(0, totalAnalysts - strongBuyCount - buyCount - holdCount);
+
   const consensusSplit = [
-    { label: "Strong Buy", count: 31, color: "#00D4AA" },
-    { label: "Buy", count: 11, color: "#4D9FFF" },
-    { label: "Hold", count: 4, color: "#F5A524" },
-    { label: "Sell", count: 1, color: "#E05555" },
+    { label: "Strong Buy", count: strongBuyCount, color: "#00D4AA" },
+    { label: "Buy", count: buyCount, color: "#4D9FFF" },
+    { label: "Hold", count: holdCount, color: "#F5A524" },
+    { label: "Sell", count: sellCount, color: "#E05555" },
   ];
-  const totalAnalysts = 47;
 
   // Active Signals (simulated multi-factor indicators checklist)
   const activeSignals = [
@@ -127,7 +153,7 @@ export default function StockAnalysis() {
               </span>
             </div>
             <div className="text-[10px] text-muted-text mt-0.5">
-              Semiconductors · Mega-cap · Market Cap {fmtNum((quote?.market_cap || 2.54e12) / 1e12)}T · Float {quote?.currency || "USD"}
+              Mega-cap · Market Cap {quote?.market_cap ? (quote.market_cap >= 1e12 ? (quote.market_cap / 1e12).toFixed(2) + "T" : (quote.market_cap / 1e9).toFixed(1) + "B") : "—"} · Currency {quote?.currency || "USD"}
             </div>
           </div>
         </div>
@@ -267,18 +293,18 @@ export default function StockAnalysis() {
             </div>
             <div className="grid grid-cols-2 gap-y-2.5 text-[11px]">
               {[
-                ["P/E (ttm)", "72.4"],
-                ["Fwd P/E", "38.1"],
-                ["PEG Ratio", "1.42"],
-                ["EV / EBITDA", "64.8"],
-                ["Gross Margin", "75.3%"],
-                ["Op. Margin", "62.4%"],
-                ["ROE", "103.4%"],
-                ["Net Debt/EBITDA", "-0.62"],
-                ["Rev Growth (y/y)", "+122%"],
-                ["EPS Growth (y/y)", "+168%"],
-                ["FCF Yield", "1.4%"],
-                ["Beta (5Y)", "1.71"]
+                ["P/E (ttm)", f.pe_ttm.toFixed(1)],
+                ["Fwd P/E", f.fwd_pe.toFixed(1)],
+                ["PEG Ratio", f.peg_ratio.toFixed(2)],
+                ["EV / EBITDA", f.ev_ebitda.toFixed(1)],
+                ["Gross Margin", (f.gross_margin * 100).toFixed(1) + "%"],
+                ["Op. Margin", (f.op_margin * 100).toFixed(1) + "%"],
+                ["ROE", (f.roe * 100).toFixed(1) + "%"],
+                ["Net Debt/EBITDA", f.debt_ebitda.toFixed(2)],
+                ["Rev Growth (y/y)", (f.rev_growth >= 0 ? "+" : "") + (f.rev_growth * 100).toFixed(1) + "%"],
+                ["EPS Growth (y/y)", (f.eps_growth >= 0 ? "+" : "") + (f.eps_growth * 100).toFixed(1) + "%"],
+                ["FCF Yield", (f.fcf_yield * 100).toFixed(1) + "%"],
+                ["Beta (5Y)", f.beta.toFixed(2)]
               ].map(([k, v]) => (
                 <div key={k} className="flex justify-between border-b border-line/20 pb-1.5 pr-2">
                   <span className="text-muted-text">{k}</span>
@@ -294,14 +320,14 @@ export default function StockAnalysis() {
               <div className="label text-[9px] text-muted-text font-bold uppercase tracking-widest">
                 Analyst Consensus
               </div>
-              <span className="chip bg-secondary/15 text-secondary px-1.5 py-0.2 rounded font-bold text-[9px]">
-                Strong Buy
+              <span className="chip bg-secondary/15 text-secondary px-1.5 py-0.5 rounded font-bold text-[9px]">
+                {f.analyst_rating}
               </span>
             </header>
             <div className="text-[12px] space-y-3 pt-1">
               <div className="flex items-baseline gap-2">
-                <div className="font-display text-[26px] font-bold text-ink leading-none">4.6</div>
-                <div className="text-muted-text text-[10px]">/ 5 · 47 analysts consensus</div>
+                <div className="font-display text-[26px] font-bold text-ink leading-none">{f.analyst_score.toFixed(1)}</div>
+                <div className="text-muted-text text-[10px]">/ 5 · {f.analyst_count} analysts consensus</div>
               </div>
               <div className="space-y-2 mt-2">
                 {consensusSplit.map((c) => (
@@ -310,7 +336,7 @@ export default function StockAnalysis() {
                     <div className="flex-1 h-1.5 bg-line rounded-full overflow-hidden">
                       <div 
                         className="h-full rounded-full" 
-                        style={{ width: `${(c.count / totalAnalysts) * 100}%`, backgroundColor: c.color }} 
+                        style={{ width: `${(c.count / (totalAnalysts || 1)) * 100}%`, backgroundColor: c.color }} 
                       />
                     </div>
                     <div className="w-5 text-right font-bold text-ink">{c.count}</div>
@@ -320,15 +346,15 @@ export default function StockAnalysis() {
               <div className="grid grid-cols-3 gap-3 border-t border-line/30 pt-3 text-center text-[10px] mt-4">
                 <div>
                   <div className="text-muted-text text-[9px] uppercase font-bold">Low target</div>
-                  <div className="font-bold text-ink mt-0.5">$840</div>
+                  <div className="font-bold text-ink mt-0.5">${fmtNum(f.target_low, 0)}</div>
                 </div>
                 <div>
                   <div className="text-muted-text text-[9px] uppercase font-bold">Mean price</div>
-                  <div className="font-bold text-primary mt-0.5">$1,210</div>
+                  <div className="font-bold text-primary mt-0.5">${fmtNum(f.target_mean, 0)}</div>
                 </div>
                 <div>
                   <div className="text-muted-text text-[9px] uppercase font-bold">High target</div>
-                  <div className="font-bold text-ink mt-0.5">$1,500</div>
+                  <div className="font-bold text-ink mt-0.5">${fmtNum(f.target_high, 0)}</div>
                 </div>
               </div>
             </div>
