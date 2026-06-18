@@ -18,7 +18,11 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [selectedSymbol, setSelectedSymbol] = useState("NVDA");
   const [activeView, setActiveView] = useState("overview");
-  const [token, setToken] = useState<string | null>(() => getAuthToken());
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    setToken(getAuthToken());
+  }, []);
 
   const login = (newToken: string) => {
     setAuthToken(newToken);
