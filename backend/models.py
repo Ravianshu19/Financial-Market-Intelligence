@@ -1,7 +1,10 @@
 from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
-from backend.database import Base
+try:
+    from backend.database import Base
+except ModuleNotFoundError:
+    from database import Base
 
 class User(Base):
     __tablename__ = "users"

@@ -31,8 +31,12 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
-from backend import models, auth, ml, sentiment
-from backend.database import engine, Base, get_db
+try:
+    from backend import models, auth, ml, sentiment
+    from backend.database import engine, Base, get_db
+except ModuleNotFoundError:
+    import models, auth, ml, sentiment
+    from database import engine, Base, get_db
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s | %(message)s")
 log = logging.getLogger("quantra")
@@ -397,7 +401,10 @@ async def forecast(ticker: str, horizon: int = 20) -> dict[str, Any]:
         return cached
 
     loop = asyncio.get_running_loop()
-    from backend import ml
+    try:
+        from backend import ml
+    except ModuleNotFoundError:
+        import ml
 
     def _do() -> dict[str, Any]:
         try:
@@ -453,7 +460,10 @@ async def explain(ticker: str, top_k: int = 6) -> dict[str, Any]:
     if cached:
         return cached
     loop = asyncio.get_running_loop()
-    from backend import ml
+    try:
+        from backend import ml
+    except ModuleNotFoundError:
+        import ml
     try:
         result = await loop.run_in_executor(None, lambda: ml.explain(ticker, top_k=top_k))
     except Exception as e:  # noqa: BLE001
@@ -471,7 +481,10 @@ async def analyst(ticker: str) -> dict[str, Any]:
     if cached:
         return cached
     loop = asyncio.get_running_loop()
-    from backend import ml
+    try:
+        from backend import ml
+    except ModuleNotFoundError:
+        import ml
 
     def _do() -> dict[str, Any]:
         try:

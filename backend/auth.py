@@ -56,8 +56,12 @@ else:
     )
     SECRET_KEY = secrets.token_hex(32)
 
-from backend.database import get_db
-from backend import models
+try:
+    from backend.database import get_db
+    from backend import models
+except ModuleNotFoundError:
+    from database import get_db
+    import models
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))  # Default to 24h for dev ease
