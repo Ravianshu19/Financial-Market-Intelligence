@@ -44,7 +44,7 @@ export default function Page() {
     <div className="min-h-screen flex flex-col bg-bg text-ink relative">
       {/* Background visual details */}
       <div className="absolute inset-0 bg-hero-glow pointer-events-none z-0" />
-      <div className="grid-bg absolute inset-0 opacity-40 pointer-events-none z-0" />
+      <div className="grid-bg absolute inset-0 opacity-15 pointer-events-none z-0" />
 
       {/* TOPBAR NAVIGATION & MARQUEE TICKER */}
       <div className="relative z-10">

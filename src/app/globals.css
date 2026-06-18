@@ -30,16 +30,16 @@ body {
 
 /* Custom Grids and Backgrounds inspired by Vulnora dashboard */
 .grid-bg {
-  background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.04) 1px, transparent 0);
+  background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.02) 1px, transparent 0);
   background-size: 22px 22px;
 }
 
 .bg-hero-glow {
-  background: linear-gradient(to bottom, rgba(77, 159, 255, 0.04) 0%, transparent 100%);
+  background: linear-gradient(to bottom, rgba(77, 159, 255, 0.01) 0%, transparent 100%);
 }
 
 .bg-auth-glow {
-  background: linear-gradient(to bottom, rgba(77, 159, 255, 0.08) 0%, transparent 100%);
+  background: linear-gradient(to bottom, rgba(77, 159, 255, 0.02) 0%, transparent 100%);
 }
 
 .gradient-text {
@@ -54,7 +54,7 @@ body {
 }
 
 .softgrad {
-  background: linear-gradient(135deg, rgba(77, 159, 255, 0.08) 0%, rgba(0, 212, 170, 0.04) 100%), #14141C;
+  background: linear-gradient(135deg, rgba(77, 159, 255, 0.02) 0%, rgba(0, 212, 170, 0.01) 100%), #14141C;
 }
 
 .scroll-hide::-webkit-scrollbar {
