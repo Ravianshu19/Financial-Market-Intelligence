@@ -431,10 +431,10 @@ export default function StockAnalysis() {
                   <div key={s.label} className="text-[10px] space-y-1">
                     <div className="flex justify-between font-semibold">
                       <span className="text-muted-text">{s.label}</span>
-                      <span className="text-ink">{Math.round(s.val * 100)}%</span>
+                      <span className="text-ink">{Math.round(s.val)}%</span>
                     </div>
                     <div className="h-2 bg-line rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${s.val * 100}%`, backgroundColor: s.color }} />
+                      <div className="h-full rounded-full" style={{ width: `${s.val}%`, backgroundColor: s.color }} />
                     </div>
                   </div>
                 ))}
