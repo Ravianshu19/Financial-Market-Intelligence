@@ -4,6 +4,10 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./quantra.db")
 
+# Render / Heroku database URLs often start with postgres://, which SQLAlchemy requires to be postgresql://
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 # For SQLite, allow access from multiple threads
 connect_args = {}
 if DATABASE_URL.startswith("sqlite"):
