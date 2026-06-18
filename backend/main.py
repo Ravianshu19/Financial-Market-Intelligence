@@ -1023,16 +1023,20 @@ def verify_signup_otp(req: VerifyOTPRequest, db: Session = Depends(get_db)):
 @app.post("/api/auth/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
-    if not user or not auth.verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(status_code=400, detail="Incorrect email or password")
+    if not user:
+        raise HTTPException(status_code=400, detail="Account not found. Please sign up.")
+    if not auth.verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Incorrect password. Please try again.")
     access_token = auth.create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.post("/api/auth/login-json")
 def login_json(req: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == req.email).first()
-    if not user or not auth.verify_password(req.password, user.hashed_password):
-        raise HTTPException(status_code=400, detail="Incorrect email or password")
+    if not user:
+        raise HTTPException(status_code=400, detail="Account not found. Please sign up.")
+    if not auth.verify_password(req.password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Incorrect password. Please try again.")
     access_token = auth.create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 

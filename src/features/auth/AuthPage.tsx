@@ -56,7 +56,15 @@ export default function AuthPage() {
       }
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "Authentication failed. Please check your credentials.";
-      setError(errMsg);
+      if (!isSignUp && errMsg.includes("Account not found")) {
+        setError("Account not found. Automatically switching to Sign Up desk...");
+        setTimeout(() => {
+          setIsSignUp(true);
+          setError(null);
+        }, 1500);
+      } else {
+        setError(errMsg);
+      }
     } finally {
       setLoading(false);
     }
