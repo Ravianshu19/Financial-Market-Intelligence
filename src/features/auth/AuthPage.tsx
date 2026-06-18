@@ -18,6 +18,7 @@ export default function AuthPage() {
   const [showOtpScreen, setShowOtpScreen] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [otpEmail, setOtpEmail] = useState("");
+  const [otpMessage, setOtpMessage] = useState("");
 
   // Password checks for strong password indicator
   const passwordChecks = {
@@ -45,6 +46,7 @@ export default function AuthPage() {
         } else {
           // OTP code sent
           setOtpEmail(email);
+          setOtpMessage(res.message || "");
           setShowOtpScreen(true);
         }
       } else {
@@ -111,7 +113,7 @@ export default function AuthPage() {
         {/* Subtitle */}
         <p className="text-sm sm:text-base text-muted-text mt-5 max-w-md leading-relaxed font-mono">
           {showOtpScreen
-            ? `We sent a 6-digit verification code to ${otpEmail}. Please enter it below to complete your registration.`
+            ? otpMessage || `We sent a 6-digit verification code to ${otpEmail}. Please enter it below to complete your registration.`
             : isSignUp 
               ? "Create your Quantra account. Harness model forecasts, news sentiment, and risk analysis in real time." 
               : "Sign in to your research desk. Analyze market technicals, model registries, and portfolio health."
@@ -136,6 +138,10 @@ export default function AuthPage() {
                 </span>
                 <input
                   type="text"
+                  id="otp"
+                  name="otp"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
                   placeholder="6-digit code"
                   required
                   maxLength={6}
@@ -162,6 +168,12 @@ export default function AuthPage() {
                 )}
               </button>
 
+              {loading && (
+                <p className="mt-2 text-[10px] text-muted-text text-center leading-normal animate-pulse select-none font-mono">
+                  Verifying credentials and waking up database...
+                </p>
+              )}
+
               {/* Go Back button */}
               <button
                 type="button"
@@ -169,6 +181,7 @@ export default function AuthPage() {
                   setShowOtpScreen(false);
                   setError(null);
                   setOtpCode("");
+                  setOtpMessage("");
                 }}
                 disabled={loading}
                 className="w-full flex items-center justify-center gap-1.5 text-xs text-muted-text hover:text-ink transition-colors cursor-pointer bg-transparent border-none mt-2"
@@ -186,6 +199,9 @@ export default function AuthPage() {
                   </span>
                   <input
                     type="email"
+                    id="email"
+                    name="email"
+                    autoComplete="username"
                     placeholder="Email address"
                     required
                     value={email}
@@ -202,6 +218,9 @@ export default function AuthPage() {
                   </span>
                   <input
                     type={showPassword ? "text" : "password"}
+                    id={isSignUp ? "new-password" : "password"}
+                    name={isSignUp ? "new-password" : "password"}
+                    autoComplete={isSignUp ? "new-password" : "current-password"}
                     placeholder="Password"
                     required
                     value={password}
@@ -279,12 +298,18 @@ export default function AuthPage() {
                   {loading ? (
                     <>
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      Processing...
+                      {isSignUp ? "Sending Code..." : "Logging In..."}
                     </>
                   ) : (
                     isSignUp ? "Send Verification Code" : "Access Dashboard"
                   )}
                 </button>
+
+                {loading && (
+                  <p className="mt-3 text-[10px] text-muted-text text-center leading-normal animate-pulse select-none font-mono">
+                    Waking up research desk... First load after inactivity may take up to 60 seconds on Render free tier.
+                  </p>
+                )}
               </form>
 
               {/* Toggle signup/login */}

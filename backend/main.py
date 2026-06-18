@@ -922,7 +922,7 @@ def send_otp_email(email: str, otp: str) -> bool:
         """
         msg.attach(MIMEText(html, "html"))
 
-        with smtplib.SMTP(smtp_host, smtp_port) as server:
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=10.0) as server:
             server.starttls()
             server.login(smtp_user, smtp_password)
             server.sendmail(smtp_from, email, msg.as_string())
@@ -974,11 +974,17 @@ def signup(user_data: UserCreate, background_tasks: BackgroundTasks, db: Session
     # Send OTP via email in the background to prevent request hanging/lag
     background_tasks.add_task(send_otp_email, user_data.email, otp)
     
+    smtp_user = os.getenv("SMTP_USER", "")
+    smtp_password = os.getenv("SMTP_PASSWORD", "")
+    msg_txt = "Verification code sent to your email."
+    if not smtp_user or not smtp_password:
+        msg_txt = f"SMTP not configured. Verification code (Dev Mode): {otp}"
+
     return {
         "status": "otp_sent",
         "email": user_data.email,
         "id": None,
-        "message": "Verification code sent to your email."
+        "message": msg_txt
     }
 
 @app.post("/api/auth/verify-signup-otp")
