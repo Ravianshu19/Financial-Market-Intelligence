@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/services/api";
 import { useApp } from "@/context/AppContext";
@@ -19,6 +19,61 @@ import { Cpu, RefreshCw, AlertTriangle, Play, CheckCircle } from "lucide-react";
 
 export default function AIAnalyst() {
   const { selectedSymbol, token } = useApp();
+
+  // Chat Copilot States
+  const [chatInput, setChatInput] = useState("");
+  const [chatHistory, setChatHistory] = useState<{ sender: "user" | "bot"; text: string }[]>([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Initialize and update chat welcome message on symbol changes
+  useEffect(() => {
+    setChatHistory([
+      { 
+        sender: "bot", 
+        text: `I am your Quantra Research Copilot. Ask me about ${selectedSymbol}'s current price trends, RSI, MACD indicators, or XGBoost prediction models.` 
+      }
+    ]);
+  }, [selectedSymbol]);
+
+  // Scroll to bottom of chat
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatHistory, chatLoading]);
+
+  const handleChatSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || chatLoading) return;
+    
+    const text = chatInput.trim();
+    setChatInput("");
+    setChatHistory(prev => [...prev, { sender: "user", text }]);
+    setChatLoading(true);
+
+    try {
+      const res = await api.askCopilot(selectedSymbol, text);
+      setChatHistory(prev => [...prev, { sender: "bot", text: res.reply }]);
+    } catch (err) {
+      setChatHistory(prev => [...prev, { sender: "bot", text: "Failed to connect to the Copilot service. Please try again." }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const triggerQuickPrompt = async (prompt: string) => {
+    if (chatLoading) return;
+    setChatHistory(prev => [...prev, { sender: "user", text: prompt }]);
+    setChatLoading(true);
+    
+    try {
+      const res = await api.askCopilot(selectedSymbol, prompt);
+      setChatHistory(prev => [...prev, { sender: "bot", text: res.reply }]);
+    } catch (err) {
+      setChatHistory(prev => [...prev, { sender: "bot", text: "Failed to connect to the Copilot service. Please try again." }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
 
   // Get full analyst consensus narrative (forecast + SHAP + bullets)
   const { data: analystData, isLoading, refetch, isRefetching } = useQuery({
@@ -318,6 +373,92 @@ export default function AIAnalyst() {
                 <div className="text-ink font-bold text-[12px] mt-0.5">{metric.v}</div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 3. AI CO-PILOT CHAT DESK */}
+      <section className="card p-5 bg-card border border-line rounded-xl space-y-4 font-mono">
+        <header className="flex items-center gap-2 border-b border-line pb-3">
+          <div className="h-2 w-2 rounded-full bg-primary pulse-dot relative" />
+          <div className="label text-[9px] text-muted-text font-bold uppercase tracking-widest">
+            AI Research Copilot · Interactive Analysis
+          </div>
+        </header>
+
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+          {/* Chat Messages Panel */}
+          <div className="md:col-span-8 flex flex-col justify-between border border-line/60 bg-panel/30 rounded-xl p-4 h-[300px] overflow-hidden">
+            {/* Scrollable chat history */}
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1 scroll-hide">
+              {chatHistory.map((ch, idx) => (
+                <div key={idx} className={`flex ${ch.sender === "user" ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-xs leading-normal select-text ${
+                    ch.sender === "user" 
+                      ? "bg-primary text-bg font-semibold rounded-tr-none" 
+                      : "bg-card border border-line text-ink rounded-tl-none whitespace-pre-line"
+                  }`}>
+                    {ch.text}
+                  </div>
+                </div>
+              ))}
+              {chatLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-card border border-line text-muted-text rounded-2xl rounded-tl-none px-3.5 py-2 text-xs flex items-center gap-1.5 animate-pulse">
+                    <RefreshCw className="h-3 w-3 animate-spin text-primary" />
+                    Copilot is thinking...
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input Form */}
+            <form onSubmit={handleChatSubmit} className="mt-3 flex items-center gap-2 bg-card border border-line rounded-xl px-3 py-2 focus-within:border-primary/50 transition-colors">
+              <input
+                placeholder={`Ask Copilot about ${selectedSymbol} (e.g. RSI, MACD, forecast)...`}
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                disabled={chatLoading}
+                className="bg-transparent outline-none flex-1 text-xs placeholder:text-muted-text text-ink"
+              />
+              <button 
+                type="submit" 
+                disabled={chatLoading || !chatInput.trim()} 
+                className="btn btn-primary px-3 py-1.5 text-[10px] font-bold rounded-lg bg-primary text-bg hover:bg-primary/95 transition-all disabled:opacity-40 cursor-pointer"
+              >
+                Send
+              </button>
+            </form>
+          </div>
+
+          {/* Quick-Prompt suggestions */}
+          <div className="md:col-span-4 flex flex-col justify-between p-4 bg-panel/10 border border-line/45 rounded-xl space-y-3">
+            <div>
+              <span className="text-[10px] text-muted-text uppercase font-bold tracking-wider">Quick Prompts</span>
+              <p className="text-[9px] text-muted-text mt-1 leading-normal">
+                Click any prompt to instantly query the copilot about the current indicator regimes:
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              {[
+                "Explain the forecast models and direction",
+                "What is the current RSI status?",
+                "Is the MACD showing a bullish crossover?",
+                "What are the main SHAP decision drivers?"
+              ].map((p, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => triggerQuickPrompt(p)}
+                  disabled={chatLoading}
+                  className="w-full text-left p-2.5 text-[10px] rounded-lg border border-line hover:border-primary/30 hover:bg-primary/5 text-ink transition-all cursor-pointer select-none truncate"
+                >
+                  💬 {p}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </section>

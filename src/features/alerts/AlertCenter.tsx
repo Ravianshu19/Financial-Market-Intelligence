@@ -45,6 +45,13 @@ export default function AlertCenter() {
     },
   });
 
+  const rearmAlertMutation = useMutation({
+    mutationFn: (id: number) => api.rearmAlert(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["alerts"] });
+    },
+  });
+
   const handleCreateAlert = (e: React.FormEvent) => {
     e.preventDefault();
     const val = parseFloat(threshold);
@@ -211,7 +218,12 @@ export default function AlertCenter() {
                           Trigger Test
                         </button>
                       ) : (
-                        <span className="text-muted-text text-[10px] italic">Triggered</span>
+                        <button
+                          onClick={() => rearmAlertMutation.mutate(rule.id)}
+                          className="px-2 py-1 rounded bg-secondary/15 border border-secondary/20 hover:border-secondary text-[10px] text-secondary font-bold transition-all cursor-pointer"
+                        >
+                          Re-arm Trigger
+                        </button>
                       )}
                     </td>
                     <td className="text-center">

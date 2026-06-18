@@ -288,6 +288,25 @@ export interface PortfolioHolding {
   gain_loss_pct: number;
 }
 
+export interface SectorAllocationItem {
+  name: string;
+  value: number;
+  color: string;
+}
+
+export interface PortfolioRisk {
+  var_95: number;
+  cvar_95: number;
+  realised_vol: number;
+  beta: number;
+  correlation: number;
+  sector_allocation: SectorAllocationItem[];
+  concentration: string;
+  max_drawdown: number;
+  sharpe: number;
+  recommendation: string;
+}
+
 export interface PortfolioResponse {
   name: string;
   total_value: number;
@@ -295,6 +314,7 @@ export interface PortfolioResponse {
   daily_change: number;
   daily_change_pct: number;
   holdings: PortfolioHolding[];
+  risk?: PortfolioRisk;
 }
 
 export interface AlertRule {
@@ -348,6 +368,8 @@ export const api = {
   getForecast: (ticker: string, horizon = 20) => request<ForecastResponse>(`/api/forecast/${encodeURIComponent(ticker)}?horizon=${horizon}`),
   getExplain: (ticker: string, topK = 6) => request<ShapResponse>(`/api/explain/${encodeURIComponent(ticker)}?top_k=${topK}`),
   getAnalyst: (ticker: string) => request<AnalystResponse>(`/api/analyst/${encodeURIComponent(ticker)}`),
+  askCopilot: (ticker: string, message: string) => 
+    request<{ reply: string }>("/api/analyst/chat", { method: "POST", body: JSON.stringify({ ticker, message }) }),
 
   // User Watchlist
   getWatchlist: () => request<string[]>("/api/watchlist"),
@@ -366,6 +388,7 @@ export const api = {
     request<AlertRule>("/api/alerts", { method: "POST", body: JSON.stringify({ ticker, condition_type: conditionType, threshold }) }),
   deleteAlert: (id: number) => request<GenericStatusResponse>(`/api/alerts/${id}`, { method: "DELETE" }),
   triggerAlert: (id: number) => request<AlertTriggerResponse>(`/api/alerts/${id}/trigger`, { method: "POST" }),
+  rearmAlert: (id: number) => request<AlertTriggerResponse>(`/api/alerts/${id}/rearm`, { method: "POST" }),
 
   // Sentiment & MLOps
   getSentiment: (ticker: string) => request<SentimentResponse>(`/api/sentiment/${encodeURIComponent(ticker)}`),

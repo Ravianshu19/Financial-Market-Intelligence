@@ -63,18 +63,31 @@ export default function PortfolioEngine() {
     { name: "Jun", val: 1284910 },
   ];
 
-  // Process data for sector allocation donut chart
-  // Group current holdings by sectors (simulated mapping)
   const holdings = portfolio?.holdings || [];
-  const sectorAllocation = [
-    { name: "Info Tech", value: 38, color: "#4D9FFF" },
-    { name: "Communication", value: 16, color: "#00D4AA" },
-    { name: "Healthcare", value: 12, color: "#F5A524" },
-    { name: "Financials", value: 11, color: "#E05555" },
-    { name: "Consumer Disc.", value: 9, color: "#A78BFA" },
-    { name: "Energy", value: 6, color: "#22D3EE" },
-    { name: "Other", value: 8, color: "#7A7A8C" },
-  ];
+
+  // Process data for sector allocation donut chart from backend if available
+  const risk = portfolio?.risk || {
+    var_95: -0.0184,
+    cvar_95: -0.0271,
+    realised_vol: 0.224,
+    beta: 1.18,
+    correlation: 0.82,
+    sector_allocation: [
+      { name: "Info Tech", value: 38, color: "#4D9FFF" },
+      { name: "Communication", value: 16, color: "#00D4AA" },
+      { name: "Healthcare", value: 12, color: "#F5A524" },
+      { name: "Financials", value: 11, color: "#E05555" },
+      { name: "Consumer Disc.", value: 9, color: "#A78BFA" },
+      { name: "Energy", value: 6, color: "#22D3EE" },
+      { name: "Other", value: 8, color: "#7A7A8C" },
+    ],
+    concentration: "NVDA 18.2%",
+    max_drawdown: -0.124,
+    sharpe: 1.62,
+    recommendation: "Trim NVDA by 4 percentage points and reallocate to VXX hedges. This decreases portfolio CVaR to -2.18% with minimal impact on projected Sharpe ratios."
+  };
+
+  const sectorAllocation = risk.sector_allocation;
 
   const fmtNum = (n: number, d = 2) => n?.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d }) || "0.00";
   const fmtPct = (p: number) => (p >= 0 ? "+" : "") + (p || 0).toFixed(2) + "%";
@@ -209,8 +222,8 @@ export default function PortfolioEngine() {
             {[
               { k: "YTD Performance", v: "+22.40%", c: "text-secondary" },
               { k: "1Y Return", v: "+38.10%", c: "text-secondary" },
-              { k: "Portfolio Beta", v: "1.18", c: "text-primary" },
-              { k: "Sharpe Ratio", v: "1.62", c: "text-primary" }
+              { k: "Portfolio Beta", v: risk.beta.toFixed(2), c: "text-primary" },
+              { k: "Sharpe Ratio", v: risk.sharpe.toFixed(2), c: "text-primary" }
             ].map((metric) => (
               <div key={metric.k} className="card !bg-panel/40 p-2 rounded-lg border border-line/50">
                 <div className="text-muted-text text-[8px] uppercase font-bold">{metric.k}</div>
@@ -322,12 +335,12 @@ export default function PortfolioEngine() {
 
           <div className="space-y-3 text-[11px] pt-1">
             {[
-              { k: "VaR (1d, 95%)", v: "-1.84%", w: 58, c: "var(--color-danger)" },
-              { k: "CVaR (1d, 95%)", v: "-2.71%", w: 70, c: "var(--color-danger)" },
-              { k: "Max Drawdown", v: "-12.40%", w: 62, c: "var(--color-amber)" },
-              { k: "Single-Name Concentration", v: "NVDA 18.2%", w: 74, c: "var(--color-amber)" },
-              { k: "Realised Vol (30d)", v: "22.40%", w: 46, c: "var(--color-primary)" },
-              { k: "Correlation to SPX", v: "0.82", w: 82, c: "var(--color-primary)" }
+              { k: "VaR (1d, 95%)", v: (risk.var_95 * 100).toFixed(2) + "%", w: Math.min(Math.abs(risk.var_95 * 100) * 10, 100), c: "var(--color-danger)" },
+              { k: "CVaR (1d, 95%)", v: (risk.cvar_95 * 100).toFixed(2) + "%", w: Math.min(Math.abs(risk.cvar_95 * 100) * 10, 100), c: "var(--color-danger)" },
+              { k: "Max Drawdown", v: (risk.max_drawdown * 100).toFixed(2) + "%", w: Math.min(Math.abs(risk.max_drawdown * 100) * 5, 100), c: "var(--color-amber)" },
+              { k: "Single-Name Concentration", v: risk.concentration, w: parseFloat(risk.concentration.split(" ")[1]) || 0, c: "var(--color-amber)" },
+              { k: "Realised Vol (30d)", v: (risk.realised_vol * 100).toFixed(2) + "%", w: Math.min(Math.abs(risk.realised_vol * 100) * 3.3, 100), c: "var(--color-primary)" },
+              { k: "Correlation to SPX", v: risk.correlation.toFixed(2), w: Math.abs(risk.correlation) * 100, c: "var(--color-primary)" }
             ].map((r) => (
               <div key={r.k} className="space-y-1">
                 <div className="flex justify-between items-center text-[10px]">
@@ -342,7 +355,7 @@ export default function PortfolioEngine() {
           </div>
 
           <div className="text-[10px] text-muted-text border-t border-line/20 pt-3 leading-relaxed">
-            <span className="text-amber font-bold">Recommendation:</span> Trim NVDA by 4 percentage points and reallocate to VXX hedges. This decreases portfolio CVaR to -2.18% with minimal impact on projected Sharpe ratios.
+            <span className="text-amber font-bold">Recommendation:</span> {risk.recommendation}
           </div>
         </div>
       </section>
