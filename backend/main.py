@@ -877,10 +877,7 @@ def send_otp_email(email: str, otp: str) -> bool:
     smtp_password = os.getenv("SMTP_PASSWORD", "")
     smtp_from = os.getenv("SMTP_FROM", "Quantra Security <no-reply@quantra.ai>")
 
-    print(f"\n==================================================")
-    print(f"[EMAIL MOCK] Sending OTP to: {email}")
-    print(f"[EMAIL MOCK] Verification Code: {otp}")
-    print(f"==================================================\n")
+    log.info("[EMAIL MOCK] Sending OTP to: %s, Verification Code: %s", email, otp)
 
     if not smtp_user or not smtp_password:
         log.info("SMTP credentials not configured. E-mail sent to console mock.")
@@ -930,6 +927,7 @@ def send_otp_email(email: str, otp: str) -> bool:
         return True
     except Exception as e:
         log.error("Failed to send OTP Email to %s: %s", email, e)
+        log.warning("[OTP FALLBACK] Please use this OTP code to complete sign up: %s", otp)
         return False
 
 # ---------------------------------------------------------------- auth endpoints
