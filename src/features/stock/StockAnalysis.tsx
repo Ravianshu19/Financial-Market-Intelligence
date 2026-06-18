@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/services/api";
+import { api, StockQuote } from "@/services/api";
 import { useApp } from "@/context/AppContext";
 import { 
   AreaChart, 
@@ -72,30 +72,17 @@ export default function StockAnalysis() {
   })).slice(-80) || [];
 
   // Helper formats
-  const fmtNum = (n: number, d = 2) => n?.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d }) || "—";
-  const fmtPct = (p: number) => (p >= 0 ? "+" : "") + (p || 0).toFixed(2) + "%";
-  const color = (p: number) => p >= 0 ? "text-secondary" : "text-danger";
-
-  const f = quote?.fundamentals || {
-    pe_ttm: 72.4,
-    fwd_pe: 38.1,
-    peg_ratio: 1.42,
-    ev_ebitda: 64.8,
-    gross_margin: 0.753,
-    op_margin: 0.624,
-    roe: 1.034,
-    debt_ebitda: -0.62,
-    rev_growth: 1.22,
-    eps_growth: 1.68,
-    fcf_yield: 0.014,
-    beta: 1.71,
-    analyst_rating: "Strong Buy",
-    analyst_score: 4.6,
-    analyst_count: 47,
-    target_low: 840,
-    target_mean: 1210,
-    target_high: 1500,
+  const fmtNum = (n: number | null | undefined, d = 2) => n?.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d }) || "—";
+  const fmtPct = (p: number | null | undefined) => {
+    if (p == null) return "—";
+    return (p >= 0 ? "+" : "") + p.toFixed(2) + "%";
   };
+  const color = (p: number | null | undefined) => {
+    if (p == null) return "text-muted-text";
+    return p >= 0 ? "text-secondary" : "text-danger";
+  };
+
+  const f = quote?.fundamentals || {} as NonNullable<StockQuote["fundamentals"]>;
 
   const fmtVal = (val: number | null | undefined, percent = false, decimals = 2) => {
     if (val === null || val === undefined) return "—";
@@ -138,9 +125,9 @@ export default function StockAnalysis() {
     );
   }
 
-  const currentPrice = quote?.price || 1038.21;
-  const priceChange = quote?.change || 47.10;
-  const priceChangePct = quote?.change_pct || 4.75;
+  const currentPrice = quote?.price;
+  const priceChange = quote?.change;
+  const priceChangePct = quote?.change_pct;
 
   return (
     <div className="space-y-6">
@@ -174,7 +161,7 @@ export default function StockAnalysis() {
             </span>
           </div>
           <div className="text-[10px] text-muted-text mt-0.5">
-            Volume {(quote?.volume || 62.1e6) / 1e6 ? ((quote?.volume || 62.1e6) / 1e6).toFixed(1) + "M" : "—"} · Range {fmtNum(quote?.low || 982)} — {fmtNum(quote?.high || 1042)}
+            Volume {quote?.volume ? (quote.volume / 1e6).toFixed(1) + "M" : "—"} · Range {quote?.low != null ? fmtNum(quote.low) : "—"} — {quote?.high != null ? fmtNum(quote.high) : "—"}
           </div>
         </div>
       </section>
