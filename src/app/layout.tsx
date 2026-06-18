@@ -18,6 +18,17 @@ const dmMono = DM_Mono({
 export const metadata: Metadata = {
   title: "Quantra — Financial Market Intelligence Platform",
   description: "A multi-factor research desk fusing XGBoost forecasts, news sentiment, indicators and portfolio risk analysis.",
+  openGraph: {
+    title: "Quantra — Financial Market Intelligence Platform",
+    description: "A multi-factor research desk fusing XGBoost forecasts, news sentiment, indicators and portfolio risk analysis.",
+    type: "website",
+    siteName: "Quantra",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Quantra — Financial Market Intelligence Platform",
+    description: "A multi-factor research desk fusing XGBoost forecasts, news sentiment, indicators and portfolio risk analysis.",
+  }
 };
 
 export default function RootLayout({
