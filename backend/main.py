@@ -1254,7 +1254,7 @@ def send_otp_email(email: str, otp: str) -> bool:
         """
         msg.attach(MIMEText(html, "html"))
 
-        with smtplib.SMTP(smtp_host, smtp_port, timeout=10.0) as server:
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=3.0) as server:
             server.starttls()
             server.login(smtp_user, smtp_password)
             server.sendmail(smtp_from, email, msg.as_string())
@@ -1304,14 +1304,27 @@ def signup(user_data: UserCreate, background_tasks: BackgroundTasks, db: Session
         "otp": otp
     }, ttl=300) # 5 minutes
 
-    # Send OTP via email in the background to prevent request hanging/lag
-    background_tasks.add_task(send_otp_email, user_data.email, otp)
-    
+    # Try sending the OTP email synchronously to catch failures (e.g. unreachable network) instantly
     smtp_user = os.getenv("SMTP_USER", "")
     smtp_password = os.getenv("SMTP_PASSWORD", "")
-    msg_txt = "Verification code sent to your email."
-    if not smtp_user or not smtp_password:
-        msg_txt = f"SMTP not configured. Verification code (Dev Mode): {otp}"
+    
+    send_success = False
+    if smtp_user and smtp_password:
+        try:
+            send_success = send_otp_email(user_data.email, otp)
+        except Exception as e:
+            log.warning(f"Synchronous SMTP send failed: {e}")
+            send_success = False
+    else:
+        send_success = False
+
+    if send_success:
+        msg_txt = "Verification code sent to your email."
+    else:
+        if not smtp_user or not smtp_password:
+            msg_txt = f"SMTP not configured. Verification code (Dev Mode): {otp}"
+        else:
+            msg_txt = f"Verification email delivery failed. Verification code (Fallback): {otp}"
 
     return {
         "status": "otp_sent",
