@@ -35,11 +35,11 @@ body {
 }
 
 .bg-hero-glow {
-  background: radial-gradient(ellipse at top, rgba(77, 159, 255, 0.06), transparent 70%);
+  background: linear-gradient(to bottom, rgba(77, 159, 255, 0.04) 0%, transparent 100%);
 }
 
 .bg-auth-glow {
-  background: radial-gradient(ellipse at top, rgba(77, 159, 255, 0.12), transparent 70%);
+  background: linear-gradient(to bottom, rgba(77, 159, 255, 0.08) 0%, transparent 100%);
 }
 
 .gradient-text {
@@ -54,8 +54,7 @@ body {
 }
 
 .softgrad {
-  background: radial-gradient(60% 80% at 20% 0%, rgba(77, 159, 255, 0.10), transparent 60%),
-              radial-gradient(40% 60% at 100% 0%, rgba(0, 212, 170, 0.08), transparent 60%);
+  background: linear-gradient(135deg, rgba(77, 159, 255, 0.08) 0%, rgba(0, 212, 170, 0.04) 100%), #14141C;
 }
 
 .scroll-hide::-webkit-scrollbar {
