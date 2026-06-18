@@ -337,6 +337,60 @@ async def history(
     return result
 
 
+def get_all_closes_batch() -> dict[str, tuple[float, float, float]]:
+    """Fetch prev_close, last_close, and volume for all SP_TOP tickers in a single batch query."""
+    import yfinance as yf
+    import pandas as pd
+    try:
+        tickers_str = " ".join(SP_TOP)
+        df = yf.download(tickers_str, period="5d", interval="1d", group_by="ticker", auto_adjust=False, progress=False)
+        result = {}
+        if df.empty:
+            return result
+            
+        for sym in SP_TOP:
+            try:
+                if isinstance(df.columns, pd.MultiIndex):
+                    if sym in df.columns.levels[0]:
+                        ticker_df = df[sym].dropna(subset=["Close"])
+                        if len(ticker_df) >= 2:
+                            last = ticker_df.iloc[-1]
+                            prev = ticker_df.iloc[-2]
+                            result[sym] = (float(prev["Close"]), float(last["Close"]), float(last["Volume"]))
+                else:
+                    ticker_df = df.dropna(subset=["Close"])
+                    if len(ticker_df) >= 2:
+                        last = ticker_df.iloc[-1]
+                        prev = ticker_df.iloc[-2]
+                        result[sym] = (float(prev["Close"]), float(last["Close"]), float(last["Volume"]))
+            except Exception:
+                pass
+        return result
+    except Exception as e:
+        log.error("Batch yfinance download failed: %s", e)
+        return {}
+
+
+def get_closes_for_all() -> dict[str, tuple[float, float, float]]:
+    """Get closes for all SP_TOP, using a short cache TTL, batching first, falling back to individual."""
+    key = "batch_closes_cache"
+    cached = cache_get(key)
+    if cached:
+        return cached
+        
+    res = get_all_closes_batch()
+    if not res:
+        log.info("Batch closes fetch was empty or failed. Falling back to individual fetches.")
+        res = {}
+        for sym in SP_TOP:
+            val = _last_two_closes(sym)
+            if val:
+                res[sym] = val
+                
+    cache_set(key, res, ttl=120)  # Cache batch results for 2 minutes
+    return res
+
+
 @app.get("/api/movers")
 async def movers(limit: int = 5) -> dict[str, Any]:
     """Top gainers/losers from a fixed S&P top-N basket."""
@@ -345,18 +399,15 @@ async def movers(limit: int = 5) -> dict[str, Any]:
         return cached
 
     loop = asyncio.get_running_loop()
+    all_closes = await loop.run_in_executor(None, get_closes_for_all)
 
-    def fetch(sym: str) -> dict[str, Any] | None:
-        r = _last_two_closes(sym)
-        if not r:
-            return None
+    rows = []
+    for sym, r in all_closes.items():
         prev, last, vol = r
         chg = last - prev
         pct = (chg / prev * 100) if prev else 0.0
-        return {"ticker": sym, "price": last, "change": chg, "change_pct": pct, "volume": vol}
+        rows.append({"ticker": sym, "price": last, "change": chg, "change_pct": pct, "volume": vol})
 
-    rows = await _gather(*[loop.run_in_executor(None, fetch, s) for s in SP_TOP])
-    rows = [r for r in rows if isinstance(r, dict)]
     rows.sort(key=lambda r: r["change_pct"], reverse=True)
     payload = {
         "gainers": rows[:limit],
@@ -374,17 +425,14 @@ async def heatmap() -> dict[str, Any]:
         return cached
 
     loop = asyncio.get_running_loop()
+    all_closes = await loop.run_in_executor(None, get_closes_for_all)
 
-    def fetch(sym: str) -> dict[str, Any] | None:
-        r = _last_two_closes(sym)
-        if not r:
-            return None
+    rows = []
+    for sym, r in all_closes.items():
         prev, last, _ = r
         pct = (last - prev) / prev * 100 if prev else 0.0
-        return {"ticker": sym, "change_pct": pct, "price": last}
+        rows.append({"ticker": sym, "change_pct": pct, "price": last})
 
-    rows = await _gather(*[loop.run_in_executor(None, fetch, s) for s in SP_TOP])
-    rows = [r for r in rows if isinstance(r, dict)]
     payload = {"items": rows, "asof": int(time.time())}
     cache_set("heatmap", payload, ttl=120)
     return payload
