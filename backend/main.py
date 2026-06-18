@@ -781,11 +781,12 @@ def trigger_alert(alert_id: int, current_user: models.User = Depends(auth.get_cu
     raise HTTPException(status_code=404, detail="Alert not found")
 
 
-# ---------------------------------------------------------------- static
 # Mount the vendored JS first so /vendor/* works, then root last so /
 # falls back to index.html.
-app.mount("/vendor", StaticFiles(directory=str(ROOT / "vendor")), name="vendor")
-app.mount("/",       StaticFiles(directory=str(ROOT), html=True), name="root")
+if (ROOT / "vendor").exists():
+    app.mount("/vendor", StaticFiles(directory=str(ROOT / "vendor")), name="vendor")
+if (ROOT / "index.html").exists():
+    app.mount("/",       StaticFiles(directory=str(ROOT), html=True), name="root")
 
 
 @app.exception_handler(HTTPException)
