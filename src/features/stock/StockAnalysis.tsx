@@ -17,7 +17,7 @@ import {
   Line,
   ReferenceLine
 } from "recharts";
-import { TrendingUp, TrendingDown, RefreshCw, BarChart2, CheckCircle } from "lucide-react";
+import { TrendingUp, TrendingDown, RefreshCw, BarChart2, CheckCircle, Newspaper } from "lucide-react";
 
 export default function StockAnalysis() {
   const { selectedSymbol, token } = useApp();
@@ -41,6 +41,13 @@ export default function StockAnalysis() {
   const { data: indicators, isLoading: indicatorsLoading } = useQuery({
     queryKey: ["indicators", selectedSymbol],
     queryFn: () => api.getIndicators(selectedSymbol),
+    refetchInterval: 300000,
+  });
+
+  // Fetch Sentiment
+  const { data: sentiment, isLoading: sentimentLoading } = useQuery({
+    queryKey: ["sentiment", selectedSymbol],
+    queryFn: () => api.getSentiment(selectedSymbol),
     refetchInterval: 300000,
   });
 
@@ -106,17 +113,21 @@ export default function StockAnalysis() {
     { label: "Sell", count: sellCount, color: "#E05555" },
   ];
 
-  // Active Signals (simulated multi-factor indicators checklist)
+  const sentimentScore = sentiment?.score || 0;
+  const isSentimentBullish = sentimentScore > 0.15;
+  const sentimentLabel = sentiment ? `${sentiment.label.toUpperCase()} (${(sentimentScore >= 0 ? "+" : "") + sentimentScore.toFixed(2)})` : "NEUTRAL (0.00)";
+
+  // Active Signals (multi-factor indicators checklist)
   const activeSignals = [
     { name: "Golden cross (50/200)", active: true, time: "12m ago", type: "trend" },
     { name: "Volume thrust > 2σ", active: true, time: "3h ago", type: "volume" },
     { name: "RSI Mean Reversion", active: false, time: "Armed", type: "oscillator" },
     { name: "MACD Bullish Cross", active: true, time: "Yesterday", type: "momentum" },
     { name: "Insider net buying (30d)", active: true, time: "7d ago", type: "fundamental" },
-    { name: "Headline sentiment > 0.8", active: true, time: "24h ago", type: "sentiment" },
+    { name: "Headline sentiment > 0.15", active: isSentimentBullish, time: sentiment ? "Live" : "24h ago", type: "sentiment" },
   ];
 
-  if (quoteLoading || historyLoading || indicatorsLoading) {
+  if (quoteLoading || historyLoading || indicatorsLoading || sentimentLoading) {
     return (
       <div className="card p-12 flex flex-col items-center justify-center text-muted-text text-sm font-mono border border-line bg-card rounded-xl">
         <RefreshCw className="h-6 w-6 animate-spin mb-3 text-primary" />
@@ -380,6 +391,96 @@ export default function StockAnalysis() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* 3. NEWS SENTIMENT DESK */}
+      <section className="card p-5 bg-card border border-line rounded-xl space-y-4 font-mono">
+        <header className="flex justify-between items-center border-b border-line pb-3">
+          <div className="label text-[9px] text-muted-text font-bold uppercase tracking-widest flex items-center gap-1.5">
+            <Newspaper className="h-3.5 w-3.5 text-primary" />
+            Real-time Sentiment & News Desk (FinBERT)
+          </div>
+          {sentiment && (
+            <span className={`chip text-[9px] px-2 py-0.5 rounded font-bold uppercase border ${
+              sentiment.label === "positive" 
+                ? "bg-secondary/15 text-secondary border-secondary/20" 
+                : sentiment.label === "negative" 
+                  ? "bg-danger/15 text-danger border-danger/20" 
+                  : "bg-primary/10 text-primary border-primary/20"
+            }`}>
+              Overall: {sentimentLabel}
+            </span>
+          )}
+        </header>
+
+        {!sentiment?.news || sentiment.news.length === 0 ? (
+          <div className="py-6 text-center text-muted-text text-xs">
+            No news sentiment signals found for {selectedSymbol} in the last 24h.
+          </div>
+        ) : (
+          <div className="grid grid-cols-12 gap-6">
+            {/* Distribution chart/summary */}
+            <div className="col-span-12 md:col-span-4 space-y-4 border-r border-line/30 pr-0 md:pr-6">
+              <h4 className="text-xs font-bold text-ink uppercase">Sentiment Distribution</h4>
+              <div className="space-y-3">
+                {[
+                  { label: "Positive", val: sentiment.sentiment_distribution.positive, color: "var(--color-secondary)" },
+                  { label: "Neutral", val: sentiment.sentiment_distribution.neutral, color: "var(--color-primary)" },
+                  { label: "Negative", val: sentiment.sentiment_distribution.negative, color: "var(--color-danger)" }
+                ].map((s) => (
+                  <div key={s.label} className="text-[10px] space-y-1">
+                    <div className="flex justify-between font-semibold">
+                      <span className="text-muted-text">{s.label}</span>
+                      <span className="text-ink">{Math.round(s.val * 100)}%</span>
+                    </div>
+                    <div className="h-2 bg-line rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${s.val * 100}%`, backgroundColor: s.color }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="p-3 bg-panel/30 border border-line rounded-lg text-[10px] text-muted-text leading-relaxed">
+                <span className="font-bold text-ink uppercase block mb-1">Signal Strategy</span>
+                FinBERT NLP engine classifies incoming financial headlines. A score above +0.15 indicates positive/bullish momentum. Below -0.15 indicates warning signs.
+              </div>
+            </div>
+
+            {/* News List */}
+            <div className="col-span-12 md:col-span-8 space-y-3 max-h-[350px] overflow-y-auto pr-2 scroll-hide">
+              {sentiment.news.map((item, idx) => (
+                <div key={idx} className="p-3.5 bg-panel/20 border border-line/50 hover:border-line hover:bg-panel/40 rounded-xl transition-all flex justify-between gap-4">
+                  <div className="space-y-2 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[9px] text-muted-text uppercase font-semibold">{item.publisher}</span>
+                      <span className="text-[9px] text-muted-text">·</span>
+                      <span className="text-[9px] text-muted-text">{new Date(item.date * 1000).toLocaleDateString()}</span>
+                    </div>
+                    <a 
+                      href={item.link} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="text-xs font-bold text-ink hover:text-primary hover:underline transition-colors line-clamp-2"
+                    >
+                      {item.title}
+                    </a>
+                  </div>
+                  <div className="flex flex-col items-end justify-center min-w-[70px]">
+                    <span className={`chip text-[9px] px-1.5 py-0.2 rounded font-bold uppercase border ${
+                      item.label === "positive" 
+                        ? "bg-secondary/10 text-secondary border-secondary/20" 
+                        : item.label === "negative" 
+                          ? "bg-danger/10 text-danger border-danger/20" 
+                          : "bg-line text-muted-text border-line"
+                    }`}>
+                      {item.label}
+                    </span>
+                    <span className="text-[8px] text-muted-text mt-1.5 font-mono">Score: {item.score >= 0 ? "+" : ""}{item.score.toFixed(2)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );
