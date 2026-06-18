@@ -12,7 +12,7 @@ services:
       - mlruns_volume:/app/mlruns
     environment:
       - DATABASE_URL=sqlite:///./quantra.db
-      - SECRET_KEY=quantra-compose-secret-key-9876543210
+      - SECRET_KEY=${SECRET_KEY:-}
       - ACCESS_TOKEN_EXPIRE_MINUTES=1440
     restart: always
 

@@ -296,8 +296,9 @@ def forecast(ticker: str, horizon: int = 20) -> dict[str, Any]:
 def _features_from_walk(closes, highs, lows, vols, step) -> dict[str, float]:
     """Recompute the feature vector at the rolling end of a walked-forward series."""
     s = pd.DataFrame({"Close": closes, "High": highs, "Low": lows, "Volume": vols})
-    # use a date index that increments business-days — placeholder is fine
-    s.index = pd.bdate_range(end=pd.Timestamp.today(), periods=len(s))
+    original_len = len(closes) - (step - 1)
+    start_date = pd.Timestamp.today() - pd.tseries.offsets.BDay(original_len - 1)
+    s.index = pd.bdate_range(start=start_date, periods=len(s))
     feat = build_features(s).iloc[-1]
     return {c: float(feat[c]) for c in FEATURES}
 
@@ -381,7 +382,7 @@ def narrative(ticker: str, fc: dict[str, Any], expl: dict[str, Any], indicators:
     sig  = indicators["latest"]["signal"]
 
     drivers_up = [c for c in expl["top"] if c["shap"] > 0][:3]
-    drivers_dn = [c for c in expl["top"] if c["shap"] < 0][:3]
+    drivers_down = [c for c in expl["top"] if c["shap"] < 0][:3]
 
     conviction = min(0.95, 0.45 + 0.5 * fc["metrics"]["dir_acc"])
 
@@ -394,8 +395,8 @@ def narrative(ticker: str, fc: dict[str, Any], expl: dict[str, Any], indicators:
     bullets = []
     if drivers_up:
         bullets.append("Tailwinds: " + ", ".join(d["label"].lower() for d in drivers_up))
-    if drivers_dn:
-        bullets.append("Headwinds: " + ", ".join(d["label"].lower() for d in drivers_dn))
+    if drivers_down:
+        bullets.append("Headwinds: " + ", ".join(d["label"].lower() for d in drivers_down))
     if rsi >= 70:
         bullets.append(f"RSI elevated at {rsi:.0f} — watch for mean reversion")
     elif rsi <= 30:
@@ -421,5 +422,5 @@ def narrative(ticker: str, fc: dict[str, Any], expl: dict[str, Any], indicators:
         ),
         "bullets": bullets,
         "drivers_up": drivers_up,
-        "drivers_dn": drivers_dn,
+        "drivers_down": drivers_down,
     }

@@ -1,5 +1,7 @@
 import os
-from datetime import datetime, timedelta
+import secrets
+import logging
+from datetime import datetime, timedelta, timezone
 from typing import Union
 import jwt
 import bcrypt
@@ -10,7 +12,13 @@ from backend.database import get_db
 from backend import models
 
 # JWT Settings
-SECRET_KEY = os.getenv("SECRET_KEY", "quantra-super-secret-key-1234567890abcdef")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    logging.getLogger("quantra.auth").warning(
+        "SECRET_KEY environment variable is not set! Generating a random 32-byte secure key for this session."
+    )
+    SECRET_KEY = secrets.token_hex(32)
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))  # Default to 24h for dev ease
 
@@ -29,9 +37,9 @@ def get_password_hash(password: str) -> str:
 def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None) -> str:
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt

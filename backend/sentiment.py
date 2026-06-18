@@ -88,30 +88,17 @@ def analyze_sentiment(ticker: str) -> dict[str, Any]:
         news_items = []
 
     if not news_items:
-        # Generate dynamic synthetic news items so page is never empty
-        news_items = [
-            {
-                "title": f"Institutional buying supports {ticker} stock rally",
-                "publisher": "Quantra Desk",
-                "providerPublishTime": 1718712000,
-                "link": "#",
-                "uuid": "syn-1"
+        return {
+            "ticker": ticker,
+            "score": 0.0,
+            "label": "neutral",
+            "sentiment_distribution": {
+                "positive": 0.0,
+                "neutral": 100.0,
+                "negative": 0.0
             },
-            {
-                "title": f"Analyst upgrades {ticker} target price citing robust operational margins",
-                "publisher": "Financial Times",
-                "providerPublishTime": 1718701200,
-                "link": "#",
-                "uuid": "syn-2"
-            },
-            {
-                "title": f"Market volatility poses headwind for {ticker} near-term outlook",
-                "publisher": "Reuters",
-                "providerPublishTime": 1718690400,
-                "link": "#",
-                "uuid": "syn-3"
-            }
-        ]
+            "news": []
+        }
 
     analyzed = []
     total_score = 0.0

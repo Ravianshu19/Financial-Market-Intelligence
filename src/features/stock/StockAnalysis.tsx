@@ -97,8 +97,16 @@ export default function StockAnalysis() {
     target_high: 1500,
   };
 
-  const totalAnalysts = f.analyst_count;
-  const scoreRatio = (f.analyst_score - 1) / 4;
+  const fmtVal = (val: number | null | undefined, percent = false, decimals = 2) => {
+    if (val === null || val === undefined) return "—";
+    const multiplied = percent ? val * 100 : val;
+    const suffix = percent ? "%" : "";
+    const prefix = (percent && val >= 0) ? "+" : "";
+    return prefix + multiplied.toFixed(decimals) + suffix;
+  };
+
+  const totalAnalysts = f.analyst_count || 0;
+  const scoreRatio = f.analyst_score != null ? (f.analyst_score - 1) / 4 : 0;
   const strongBuyCount = Math.round(totalAnalysts * Math.max(0, scoreRatio - 0.2) * 1.25);
   const buyCount = Math.round(totalAnalysts * Math.max(0, 0.8 - Math.abs(scoreRatio - 0.7)) * 0.85);
   const holdCount = Math.round(totalAnalysts * Math.max(0, 0.4 - Math.abs(scoreRatio - 0.4)) * 0.65);
@@ -293,18 +301,18 @@ export default function StockAnalysis() {
             </div>
             <div className="grid grid-cols-2 gap-y-2.5 text-[11px]">
               {[
-                ["P/E (ttm)", f.pe_ttm.toFixed(1)],
-                ["Fwd P/E", f.fwd_pe.toFixed(1)],
-                ["PEG Ratio", f.peg_ratio.toFixed(2)],
-                ["EV / EBITDA", f.ev_ebitda.toFixed(1)],
-                ["Gross Margin", (f.gross_margin * 100).toFixed(1) + "%"],
-                ["Op. Margin", (f.op_margin * 100).toFixed(1) + "%"],
-                ["ROE", (f.roe * 100).toFixed(1) + "%"],
-                ["Net Debt/EBITDA", f.debt_ebitda.toFixed(2)],
-                ["Rev Growth (y/y)", (f.rev_growth >= 0 ? "+" : "") + (f.rev_growth * 100).toFixed(1) + "%"],
-                ["EPS Growth (y/y)", (f.eps_growth >= 0 ? "+" : "") + (f.eps_growth * 100).toFixed(1) + "%"],
-                ["FCF Yield", (f.fcf_yield * 100).toFixed(1) + "%"],
-                ["Beta (5Y)", f.beta.toFixed(2)]
+                ["P/E (ttm)", fmtVal(f.pe_ttm, false, 1)],
+                ["Fwd P/E", fmtVal(f.fwd_pe, false, 1)],
+                ["PEG Ratio", fmtVal(f.peg_ratio, false, 2)],
+                ["EV / EBITDA", fmtVal(f.ev_ebitda, false, 1)],
+                ["Gross Margin", fmtVal(f.gross_margin, true, 1)],
+                ["Op. Margin", fmtVal(f.op_margin, true, 1)],
+                ["ROE", fmtVal(f.roe, true, 1)],
+                ["Net Debt/EBITDA", fmtVal(f.debt_ebitda, false, 2)],
+                ["Rev Growth (y/y)", fmtVal(f.rev_growth, true, 1)],
+                ["EPS Growth (y/y)", fmtVal(f.eps_growth, true, 1)],
+                ["FCF Yield", fmtVal(f.fcf_yield, true, 1)],
+                ["Beta (5Y)", fmtVal(f.beta, false, 2)]
               ].map(([k, v]) => (
                 <div key={k} className="flex justify-between border-b border-line/20 pb-1.5 pr-2">
                   <span className="text-muted-text">{k}</span>
@@ -321,13 +329,15 @@ export default function StockAnalysis() {
                 Analyst Consensus
               </div>
               <span className="chip bg-secondary/15 text-secondary px-1.5 py-0.5 rounded font-bold text-[9px]">
-                {f.analyst_rating}
+                {f.analyst_rating || "No Consensus"}
               </span>
             </header>
             <div className="text-[12px] space-y-3 pt-1">
               <div className="flex items-baseline gap-2">
-                <div className="font-display text-[26px] font-bold text-ink leading-none">{f.analyst_score.toFixed(1)}</div>
-                <div className="text-muted-text text-[10px]">/ 5 · {f.analyst_count} analysts consensus</div>
+                <div className="font-display text-[26px] font-bold text-ink leading-none">
+                  {f.analyst_score != null ? f.analyst_score.toFixed(1) : "—"}
+                </div>
+                <div className="text-muted-text text-[10px]">/ 5 · {f.analyst_count || 0} analysts consensus</div>
               </div>
               <div className="space-y-2 mt-2">
                 {consensusSplit.map((c) => (
@@ -346,15 +356,15 @@ export default function StockAnalysis() {
               <div className="grid grid-cols-3 gap-3 border-t border-line/30 pt-3 text-center text-[10px] mt-4">
                 <div>
                   <div className="text-muted-text text-[9px] uppercase font-bold">Low target</div>
-                  <div className="font-bold text-ink mt-0.5">${fmtNum(f.target_low, 0)}</div>
+                  <div className="font-bold text-ink mt-0.5">{f.target_low != null ? `$${fmtNum(f.target_low, 0)}` : "—"}</div>
                 </div>
                 <div>
                   <div className="text-muted-text text-[9px] uppercase font-bold">Mean price</div>
-                  <div className="font-bold text-primary mt-0.5">${fmtNum(f.target_mean, 0)}</div>
+                  <div className="font-bold text-primary mt-0.5">{f.target_mean != null ? `$${fmtNum(f.target_mean, 0)}` : "—"}</div>
                 </div>
                 <div>
                   <div className="text-muted-text text-[9px] uppercase font-bold">High target</div>
-                  <div className="font-bold text-ink mt-0.5">${fmtNum(f.target_high, 0)}</div>
+                  <div className="font-bold text-ink mt-0.5">{f.target_high != null ? `$${fmtNum(f.target_high, 0)}` : "—"}</div>
                 </div>
               </div>
             </div>
