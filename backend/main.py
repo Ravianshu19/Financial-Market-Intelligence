@@ -149,6 +149,41 @@ def health() -> dict[str, Any]:
     return {"status": "ok", "service": "quantra", "version": app.version, "cache_keys": len(_CACHE)}
 
 
+def get_ticker_strip_batch() -> dict[str, tuple[float, float, float]]:
+    """Fetch prev_close, last_close, and volume for all INDEX_MAP tickers in a single batch query."""
+    import yfinance as yf
+    import pandas as pd
+    try:
+        symbols = list(INDEX_MAP.values())
+        tickers_str = " ".join(symbols)
+        df = yf.download(tickers_str, period="5d", interval="1d", group_by="ticker", auto_adjust=False, progress=False)
+        result = {}
+        if df.empty:
+            return result
+            
+        for label, sym in INDEX_MAP.items():
+            try:
+                if isinstance(df.columns, pd.MultiIndex):
+                    if sym in df.columns.levels[0]:
+                        ticker_df = df[sym].dropna(subset=["Close"])
+                        if len(ticker_df) >= 2:
+                            last = ticker_df.iloc[-1]
+                            prev = ticker_df.iloc[-2]
+                            result[label] = (float(prev["Close"]), float(last["Close"]), float(last["Volume"]))
+                else:
+                    ticker_df = df.dropna(subset=["Close"])
+                    if len(ticker_df) >= 2:
+                        last = ticker_df.iloc[-1]
+                        prev = ticker_df.iloc[-2]
+                        result[label] = (float(prev["Close"]), float(last["Close"]), float(last["Volume"]))
+            except Exception:
+                pass
+        return result
+    except Exception as e:
+        log.error("Batch ticker strip yfinance download failed: %s", e)
+        return {}
+
+
 @app.get("/api/ticker")
 async def ticker_strip() -> dict[str, Any]:
     """Compact ticker bar — indices, FX, commodities, crypto."""
@@ -157,21 +192,38 @@ async def ticker_strip() -> dict[str, Any]:
         return cached
 
     loop = asyncio.get_running_loop()
-    syms = list(INDEX_MAP.items())
 
-    def fetch(label_yh: tuple[str, str]) -> dict[str, Any] | None:
-        label, yh = label_yh
-        res = _last_two_closes(yh)
-        if not res:
-            return None
-        prev, last, _ = res
-        chg = (last - prev) / prev * 100 if prev else 0.0
-        return {"sym": label, "price": last, "chg_pct": chg, "up": chg >= 0}
+    def _do_batch():
+        return get_ticker_strip_batch()
 
-    results = await _gather(*[loop.run_in_executor(None, fetch, item) for item in syms])
-    items = [r for r in results if isinstance(r, dict)]
+    all_closes = await loop.run_in_executor(None, _do_batch)
+
+    items = []
+    for label, sym in INDEX_MAP.items():
+        if label in all_closes:
+            prev, last, _ = all_closes[label]
+            chg = (last - prev) / prev * 100 if prev else 0.0
+            items.append({"sym": label, "price": last, "chg_pct": chg, "up": chg >= 0})
+
+    # Fallback to individual fetches if batch was incomplete or failed
+    if len(items) < len(INDEX_MAP) // 2:
+        log.info("Batch ticker strip fetch was incomplete or failed. Falling back to individual fetches.")
+        syms = list(INDEX_MAP.items())
+
+        def fetch(label_yh: tuple[str, str]) -> dict[str, Any] | None:
+            label, yh = label_yh
+            res = _last_two_closes(yh)
+            if not res:
+                return None
+            prev, last, _ = res
+            chg = (last - prev) / prev * 100 if prev else 0.0
+            return {"sym": label, "price": last, "chg_pct": chg, "up": chg >= 0}
+
+        results = await _gather(*[loop.run_in_executor(None, fetch, item) for item in syms])
+        items = [r for r in results if isinstance(r, dict)]
+
     payload = {"items": items, "asof": int(time.time())}
-    cache_set("ticker", payload, ttl=60)
+    cache_set("ticker", payload, ttl=120)  # Cache results for 2 minutes
     return payload
 
 
