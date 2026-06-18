@@ -8,16 +8,56 @@ import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
-from backend.database import get_db
-from backend import models
+
 
 # JWT Settings
 SECRET_KEY = os.getenv("SECRET_KEY")
-if not SECRET_KEY:
+
+FORBIDDEN_KEYS = {
+    "quantra-super-secret-key-1234567890abcdef",
+    "quantra-compose-secret-key-9876543210",
+    "secret",
+    "secret_key",
+    "default",
+}
+
+app_env = os.getenv("APP_ENV", "development").lower()
+is_prod_db = os.getenv("DATABASE_URL", "").startswith("postgres")
+is_production = (app_env == "production" or is_prod_db)
+
+if SECRET_KEY:
+    if SECRET_KEY.strip() in FORBIDDEN_KEYS:
+        if is_production:
+            raise RuntimeError(
+                "The configured SECRET_KEY is a known insecure/default key and is rejected in production mode!"
+            )
+        else:
+            logging.getLogger("quantra.auth").warning(
+                f"WARNING: The configured SECRET_KEY '{SECRET_KEY}' is a known insecure/default key! "
+                f"Please change it before deploying to production."
+            )
+else:
+    if is_production:
+        raise RuntimeError("SECRET_KEY environment variable MUST be set in production mode!")
+    
+    import sys
+    banner = (
+        "\n"
+        "********************************************************************************\n"
+        "* WARNING: SECRET_KEY environment variable is not set!                         *\n"
+        "* Generating a random 32-byte secure key for this session.                     *\n"
+        "* Note: Sessions will be invalidated on every process/server restart.          *\n"
+        "* DO NOT USE THIS IN PRODUCTION!                                               *\n"
+        "********************************************************************************\n"
+    )
+    sys.stderr.write(banner)
     logging.getLogger("quantra.auth").warning(
         "SECRET_KEY environment variable is not set! Generating a random 32-byte secure key for this session."
     )
     SECRET_KEY = secrets.token_hex(32)
+
+from backend.database import get_db
+from backend import models
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))  # Default to 24h for dev ease

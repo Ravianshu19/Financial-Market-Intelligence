@@ -97,6 +97,74 @@ def run_security_audit():
     assert auth.verify_password("wrongpassword", h1) is False
     print("  -> Passed (bcrypt hashing validated)")
 
+    # 4. Regression tests: SECRET_KEY production enforcement & default key rejection
+    import subprocess
+    import sys
+
+    print("[RUN] Auditing SECRET_KEY production enforcement & default key rejection...")
+    
+    # Test case 4a: Production env (APP_ENV=production) and no SECRET_KEY should fail
+    env = os.environ.copy()
+    if "SECRET_KEY" in env:
+        del env["SECRET_KEY"]
+    env["APP_ENV"] = "production"
+    
+    cmd = [sys.executable, "-c", "from backend import auth"]
+    res = subprocess.run(cmd, env=env, capture_output=True, text=True)
+    assert res.returncode != 0
+    assert "RuntimeError" in res.stderr
+    assert "SECRET_KEY environment variable MUST be set in production mode!" in res.stderr
+    print("  -> Passed (production mode requires SECRET_KEY)")
+
+    # Test case 4b: Production env (DATABASE_URL=postgresql://...) and no SECRET_KEY should fail
+    env = os.environ.copy()
+    if "SECRET_KEY" in env:
+        del env["SECRET_KEY"]
+    env["APP_ENV"] = "development"
+    env["DATABASE_URL"] = "postgresql://user:pass@localhost/db"
+    res = subprocess.run(cmd, env=env, capture_output=True, text=True)
+    assert res.returncode != 0
+    assert "RuntimeError" in res.stderr
+    assert "SECRET_KEY environment variable MUST be set in production mode!" in res.stderr
+    print("  -> Passed (production database requires SECRET_KEY)")
+
+    # Test case 4c: Forbidden keys rejected in production
+    forbidden_keys = [
+        "quantra-super-secret-key-1234567890abcdef",
+        "quantra-compose-secret-key-9876543210"
+    ]
+    for key in forbidden_keys:
+        env = os.environ.copy()
+        env["SECRET_KEY"] = key
+        env["APP_ENV"] = "production"
+        res = subprocess.run(cmd, env=env, capture_output=True, text=True)
+        assert res.returncode != 0
+        assert "RuntimeError" in res.stderr
+        assert "insecure/default key and is rejected" in res.stderr
+    print("  -> Passed (forbidden/default keys rejected in production)")
+
+    # Test case 4d: Ephemeral key uniqueness on separate restarts in dev
+    env1 = os.environ.copy()
+    if "SECRET_KEY" in env1:
+        del env1["SECRET_KEY"]
+    env1["APP_ENV"] = "development"
+    env1["DATABASE_URL"] = "sqlite:///:memory:"
+    
+    cmd_print = [sys.executable, "-c", "from backend import auth; print(auth.SECRET_KEY)"]
+    res1 = subprocess.run(cmd_print, env=env1, capture_output=True, text=True)
+    res2 = subprocess.run(cmd_print, env=env1, capture_output=True, text=True)
+    
+    assert res1.returncode == 0, f"res1 failed: {res1.stderr}"
+    assert res2.returncode == 0, f"res2 failed: {res2.stderr}"
+    key1 = res1.stdout.strip()
+    key2 = res2.stdout.strip()
+    key1_clean = key1.splitlines()[-1] if key1 else ""
+    key2_clean = key2.splitlines()[-1] if key2 else ""
+    assert len(key1_clean) == 64
+    assert len(key2_clean) == 64
+    assert key1_clean != key2_clean
+    print("  -> Passed (ephemeral keys are unique per process start)")
+
     print("======================================================================")
     print("SUCCESS: SECURITY AUDIT PASSED - NO VULNERABILITIES DETECTED!")
     print("======================================================================")

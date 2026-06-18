@@ -112,6 +112,7 @@ export interface DriftItem {
 export interface LatencyItem {
   req: string;
   latency: number;
+  is_real?: boolean;
 }
 
 export interface SentimentNewsItem {

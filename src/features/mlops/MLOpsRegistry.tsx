@@ -39,6 +39,8 @@ export default function MLOpsRegistry() {
     ? Math.round(latencyData.reduce((acc, curr) => acc + curr.latency, 0) / latencyData.length)
     : 142;
 
+  const hasSeed = latencyData.some((item) => item.is_real === false);
+
   const driftAlerts = driftData.filter((d) => d.isDriftAlert).length;
 
   const statsItems = [
@@ -139,7 +141,14 @@ export default function MLOpsRegistry() {
           {/* Latency Chart */}
           <div className="card p-4 bg-card border border-line rounded-xl space-y-3 font-mono">
             <div className="label text-[8px] text-muted-text font-bold uppercase tracking-wider flex justify-between border-b border-line pb-2">
-              <span>p95 Latency (ms)</span>
+              <span>
+                p95 Latency (ms)
+                {hasSeed && (
+                  <span className="text-amber-500 font-bold ml-1.5 lowercase normal-case text-[8px]">
+                    (cold start / padded)
+                  </span>
+                )}
+              </span>
               <span className="text-secondary font-bold text-[8px]">{avgLatency}ms Avg</span>
             </div>
             

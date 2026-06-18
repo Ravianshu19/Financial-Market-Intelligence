@@ -55,12 +55,7 @@ app.add_middleware(
 )
 
 # Real Request Latency Telemetry storage and middleware
-LATENCY_HISTORY = collections.deque([
-    280, 290, 310, 320, 275, 285, 330, 340, 300, 315,
-    295, 288, 305, 310, 325, 270, 290, 310, 300, 285,
-    290, 320, 315, 335, 340, 320, 310, 295, 280, 270,
-    290, 300, 315, 325, 330, 340, 310, 305, 295, 288
-], maxlen=40)
+LATENCY_HISTORY = collections.deque(maxlen=40)
 
 @app.middleware("http")
 async def record_latency_middleware(request, call_next):
@@ -778,11 +773,25 @@ async def mlops_drift() -> List[dict[str, Any]]:
 async def mlops_latency() -> List[dict[str, Any]]:
     """Returns real model inference latency metrics recorded by middleware."""
     data = list(LATENCY_HISTORY)
+    real_count = len(data)
+    if not data:
+        # If no requests have run yet, fallback to a clean list of 40 default values
+        # representing a cold-start state
+        data = [30] * 40
+    elif len(data) < 40:
+        # Pad to 40 using the available real measurements (repeat the sequence)
+        extended = []
+        while len(extended) < 40:
+            extended.extend(data)
+        data = extended[:40]
+
     latency_data = []
     for i, val in enumerate(data):
+        is_item_real = (real_count > 0 and i < real_count)
         latency_data.append({
-            "req": f"Q-{len(data) - i}",
-            "latency": val
+            "req": f"Q-{40 - i}",
+            "latency": val,
+            "is_real": is_item_real
         })
     return latency_data
 
