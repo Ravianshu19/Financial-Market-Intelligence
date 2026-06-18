@@ -23,7 +23,7 @@ from typing import Any, List, Optional
 
 import httpx
 import yfinance as yf
-from fastapi import FastAPI, HTTPException, Query, Depends, status
+from fastapi import FastAPI, HTTPException, Query, Depends, status, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -934,7 +934,7 @@ def send_otp_email(email: str, otp: str) -> bool:
 
 # ---------------------------------------------------------------- auth endpoints
 @app.post("/api/auth/signup", response_model=SignupResponse)
-def signup(user_data: UserCreate, db: Session = Depends(get_db)):
+def signup(user_data: UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.email == user_data.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -971,8 +971,8 @@ def signup(user_data: UserCreate, db: Session = Depends(get_db)):
         "otp": otp
     }, ttl=300) # 5 minutes
 
-    # Send OTP via email
-    send_otp_email(user_data.email, otp)
+    # Send OTP via email in the background to prevent request hanging/lag
+    background_tasks.add_task(send_otp_email, user_data.email, otp)
     
     return {
         "status": "otp_sent",
