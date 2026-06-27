@@ -10,6 +10,7 @@ as a placeholder until XGBoost/Prophet are wired in.
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import asyncio
 import logging
 import math
@@ -58,6 +59,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def maintenance_middleware(request, call_next):
+    from fastapi.responses import JSONResponse
+    is_maintenance = os.getenv("MAINTENANCE_MODE", "false").lower() in ("true", "1", "yes")
+    if is_maintenance and request.url.path not in ("/api/health",) and request.method != "OPTIONS":
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "Quantra terminal is currently undergoing scheduled maintenance. Please check back shortly."}
+        )
+    return await call_next(request)
 
 # Real Request Latency Telemetry storage and middleware
 LATENCY_HISTORY = collections.deque(maxlen=40)
@@ -1070,7 +1082,10 @@ def check_alerts_loop():
             db = SessionLocal()
             try:
                 # Find all armed rules
-                armed_rules = db.query(models.AlertRule).filter(models.AlertRule.status == "armed").all()
+                armed_rules = db.query(models.AlertRule).filter(
+                    models.AlertRule.status == "armed",
+                    models.AlertRule.deleted_at.is_(None)
+                ).all()
                 if armed_rules:
                     # Group rules by ticker to minimize yfinance requests
                     tickers = set(r.ticker for r in armed_rules)
@@ -1318,6 +1333,8 @@ async def mlops_latency() -> List[dict[str, Any]]:
 
 
 # ---------------------------------------------------------------- schemas
+from pydantic import BaseModel, Field
+
 class UserCreate(BaseModel):
     email: str
     password: str
@@ -1347,13 +1364,42 @@ class WatchlistCreate(BaseModel):
 
 class HoldingCreate(BaseModel):
     ticker: str
-    shares: float
-    avg_cost: float
+    shares: float = Field(..., gt=0)
+    avg_cost: float = Field(..., gt=0)
 
 class AlertCreate(BaseModel):
     ticker: str
     condition_type: str
-    threshold: float
+    threshold: float = Field(..., gt=0)
+
+# In-Memory Rate Limiter
+import time
+from collections import defaultdict
+from fastapi import Request
+
+class SimpleRateLimiter:
+    def __init__(self, limit: int, window: int):
+        self.limit = limit
+        self.window = window
+        self.requests = defaultdict(list)
+
+    def is_allowed(self, key: str) -> bool:
+        now = time.time()
+        self.requests[key] = [t for t in self.requests[key] if now - t < self.window]
+        if len(self.requests[key]) >= self.limit:
+            return False
+        self.requests[key].append(now)
+        return True
+
+auth_limiter = SimpleRateLimiter(limit=5, window=60)
+
+def rate_limit_auth(request: Request):
+    client_ip = request.client.host if request.client else "unknown"
+    if not auth_limiter.is_allowed(client_ip):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many request attempts. Please try again in 60 seconds."
+        )
 
 def validate_password_strength(password: str) -> str | None:
     """Validate password complexity."""
@@ -1439,7 +1485,7 @@ def send_otp_email(email: str, otp: str) -> bool:
 
 # ---------------------------------------------------------------- auth endpoints
 @app.post("/api/auth/signup", response_model=SignupResponse)
-def signup(user_data: UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+def signup(user_data: UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), _limiter: None = Depends(rate_limit_auth)):
     db_user = db.query(models.User).filter(models.User.email == user_data.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -1506,7 +1552,7 @@ def signup(user_data: UserCreate, background_tasks: BackgroundTasks, db: Session
     }
 
 @app.post("/api/auth/verify-signup-otp")
-def verify_signup_otp(req: VerifyOTPRequest, db: Session = Depends(get_db)):
+def verify_signup_otp(req: VerifyOTPRequest, db: Session = Depends(get_db), _limiter: None = Depends(rate_limit_auth)):
     cached = cache_get(f"otp_signup:{req.email}")
     if not cached:
         raise HTTPException(status_code=400, detail="OTP expired or invalid. Please sign up again.")
@@ -1541,7 +1587,7 @@ def verify_signup_otp(req: VerifyOTPRequest, db: Session = Depends(get_db)):
     }
 
 @app.post("/api/auth/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db), _limiter: None = Depends(rate_limit_auth)):
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
     if not user:
         raise HTTPException(status_code=400, detail="Account not found. Please sign up.")
@@ -1551,7 +1597,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.post("/api/auth/login-json")
-def login_json(req: LoginRequest, db: Session = Depends(get_db)):
+def login_json(req: LoginRequest, db: Session = Depends(get_db), _limiter: None = Depends(rate_limit_auth)):
     user = db.query(models.User).filter(models.User.email == req.email).first()
     if not user:
         raise HTTPException(status_code=400, detail="Account not found. Please sign up.")
@@ -1567,7 +1613,10 @@ def get_me(current_user: models.User = Depends(auth.get_current_user)):
 # ---------------------------------------------------------------- watchlist endpoints
 @app.get("/api/watchlist")
 def get_watchlist(current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
-    items = db.query(models.Watchlist).filter(models.Watchlist.user_id == current_user.id).all()
+    items = db.query(models.Watchlist).filter(
+        models.Watchlist.user_id == current_user.id,
+        models.Watchlist.deleted_at.is_(None)
+    ).all()
     return [item.ticker for item in items]
 
 @app.post("/api/watchlist")
@@ -1578,8 +1627,18 @@ def add_to_watchlist(item: WatchlistCreate, current_user: models.User = Depends(
         models.Watchlist.ticker == ticker
     ).first()
     if existing:
+        if existing.deleted_at is not None:
+            existing.deleted_at = None
+            existing.updated_at = datetime.now(timezone.utc)
+            existing.updated_by = current_user.email
+            db.commit()
+            return {"status": "ok", "ticker": ticker}
         return {"status": "already_exists"}
-    new_item = models.Watchlist(user_id=current_user.id, ticker=ticker)
+    new_item = models.Watchlist(
+        user_id=current_user.id,
+        ticker=ticker,
+        created_by=current_user.email
+    )
     db.add(new_item)
     db.commit()
     return {"status": "ok", "ticker": ticker}
@@ -1587,11 +1646,15 @@ def add_to_watchlist(item: WatchlistCreate, current_user: models.User = Depends(
 @app.delete("/api/watchlist/{ticker}")
 def delete_from_watchlist(ticker: str, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
     ticker = ticker.upper()
-    db.query(models.Watchlist).filter(
+    item = db.query(models.Watchlist).filter(
         models.Watchlist.user_id == current_user.id,
-        models.Watchlist.ticker == ticker
-    ).delete()
-    db.commit()
+        models.Watchlist.ticker == ticker,
+        models.Watchlist.deleted_at.is_(None)
+    ).first()
+    if item:
+        item.deleted_at = datetime.now(timezone.utc)
+        item.updated_by = current_user.email
+        db.commit()
     return {"status": "ok"}
 
 def calculate_portfolio_risk(holdings: list[dict]) -> dict:
@@ -1781,7 +1844,10 @@ async def get_portfolio(current_user: models.User = Depends(auth.get_current_use
         db.commit()
         db.refresh(portfolio)
     
-    holdings = db.query(models.PortfolioHolding).filter(models.PortfolioHolding.portfolio_id == portfolio.id).all()
+    holdings = db.query(models.PortfolioHolding).filter(
+        models.PortfolioHolding.portfolio_id == portfolio.id,
+        models.PortfolioHolding.deleted_at.is_(None)
+    ).all()
     
     if not holdings:
         return {
@@ -1869,7 +1935,7 @@ def add_holding(item: HoldingCreate, current_user: models.User = Depends(auth.ge
     ticker = item.ticker.upper()
     portfolio = db.query(models.Portfolio).filter(models.Portfolio.user_id == current_user.id).first()
     if not portfolio:
-        portfolio = models.Portfolio(user_id=current_user.id, name="Default Portfolio")
+        portfolio = models.Portfolio(user_id=current_user.id, name="Default Portfolio", created_by=current_user.email)
         db.add(portfolio)
         db.commit()
         db.refresh(portfolio)
@@ -1882,12 +1948,16 @@ def add_holding(item: HoldingCreate, current_user: models.User = Depends(auth.ge
     if existing:
         existing.shares = item.shares
         existing.avg_cost = item.avg_cost
+        existing.deleted_at = None
+        existing.updated_at = datetime.now(timezone.utc)
+        existing.updated_by = current_user.email
     else:
         new_holding = models.PortfolioHolding(
             portfolio_id=portfolio.id,
             ticker=ticker,
             shares=item.shares,
-            avg_cost=item.avg_cost
+            avg_cost=item.avg_cost,
+            created_by=current_user.email
         )
         db.add(new_holding)
         
@@ -1899,17 +1969,24 @@ def delete_holding(ticker: str, current_user: models.User = Depends(auth.get_cur
     ticker = ticker.upper()
     portfolio = db.query(models.Portfolio).filter(models.Portfolio.user_id == current_user.id).first()
     if portfolio:
-        db.query(models.PortfolioHolding).filter(
+        holding = db.query(models.PortfolioHolding).filter(
             models.PortfolioHolding.portfolio_id == portfolio.id,
-            models.PortfolioHolding.ticker == ticker
-        ).delete()
-        db.commit()
+            models.PortfolioHolding.ticker == ticker,
+            models.PortfolioHolding.deleted_at.is_(None)
+        ).first()
+        if holding:
+            holding.deleted_at = datetime.now(timezone.utc)
+            holding.updated_by = current_user.email
+            db.commit()
     return {"status": "ok"}
 
 # ---------------------------------------------------------------- alerts endpoints
 @app.get("/api/alerts")
 def get_alerts(current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
-    return db.query(models.AlertRule).filter(models.AlertRule.user_id == current_user.id).all()
+    return db.query(models.AlertRule).filter(
+        models.AlertRule.user_id == current_user.id,
+        models.AlertRule.deleted_at.is_(None)
+    ).all()
 
 @app.post("/api/alerts")
 def create_alert(item: AlertCreate, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
@@ -1918,43 +1995,52 @@ def create_alert(item: AlertCreate, current_user: models.User = Depends(auth.get
         ticker=item.ticker.upper(),
         condition_type=item.condition_type,
         threshold=item.threshold,
-        status="armed"
+        status="armed",
+        created_by=current_user.email
     )
     db.add(new_alert)
     db.commit()
     db.refresh(new_alert)
     return new_alert
 
-@app.delete("/api/alerts/{alert_id}")
-def delete_alert(alert_id: int, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
-    db.query(models.AlertRule).filter(
-        models.AlertRule.user_id == current_user.id,
-        models.AlertRule.id == alert_id
-    ).delete()
-    db.commit()
-    return {"status": "ok"}
-
-@app.post("/api/alerts/{alert_id}/trigger")
-def trigger_alert(alert_id: int, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
+@app.delete("/api/alerts/{alert_uuid}")
+def delete_alert(alert_uuid: str, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
     alert = db.query(models.AlertRule).filter(
         models.AlertRule.user_id == current_user.id,
-        models.AlertRule.id == alert_id
+        models.AlertRule.uuid == alert_uuid,
+        models.AlertRule.deleted_at.is_(None)
+    ).first()
+    if alert:
+        alert.deleted_at = datetime.now(timezone.utc)
+        alert.updated_by = current_user.email
+        db.commit()
+    return {"status": "ok"}
+
+@app.post("/api/alerts/{alert_uuid}/trigger")
+def trigger_alert(alert_uuid: str, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
+    alert = db.query(models.AlertRule).filter(
+        models.AlertRule.user_id == current_user.id,
+        models.AlertRule.uuid == alert_uuid,
+        models.AlertRule.deleted_at.is_(None)
     ).first()
     if alert:
         alert.status = "triggered"
+        alert.updated_by = current_user.email
         db.commit()
         return {"status": "ok", "alert_status": alert.status}
     raise HTTPException(status_code=404, detail="Alert not found")
 
 
-@app.post("/api/alerts/{alert_id}/rearm")
-def rearm_alert(alert_id: int, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
+@app.post("/api/alerts/{alert_uuid}/rearm")
+def rearm_alert(alert_uuid: str, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
     alert = db.query(models.AlertRule).filter(
         models.AlertRule.user_id == current_user.id,
-        models.AlertRule.id == alert_id
+        models.AlertRule.uuid == alert_uuid,
+        models.AlertRule.deleted_at.is_(None)
     ).first()
     if alert:
         alert.status = "armed"
+        alert.updated_by = current_user.email
         db.commit()
         return {"status": "ok", "alert_status": alert.status}
     raise HTTPException(status_code=404, detail="Alert not found")

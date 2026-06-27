@@ -32,21 +32,21 @@ export default function AlertCenter() {
   });
 
   const deleteAlertMutation = useMutation({
-    mutationFn: (id: number) => api.deleteAlert(id),
+    mutationFn: (uuid: string) => api.deleteAlert(uuid),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["alerts"] });
     },
   });
 
   const triggerAlertMutation = useMutation({
-    mutationFn: (id: number) => api.triggerAlert(id),
+    mutationFn: (uuid: string) => api.triggerAlert(uuid),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["alerts"] });
     },
   });
 
   const rearmAlertMutation = useMutation({
-    mutationFn: (id: number) => api.rearmAlert(id),
+    mutationFn: (uuid: string) => api.rearmAlert(uuid),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["alerts"] });
     },
@@ -212,14 +212,14 @@ export default function AlertCenter() {
                     <td className="text-center">
                       {rule.status === "armed" ? (
                         <button
-                          onClick={() => triggerAlertMutation.mutate(rule.id)}
+                          onClick={() => triggerAlertMutation.mutate(rule.uuid)}
                           className="px-2 py-1 rounded bg-line border border-line hover:border-muted-text text-[10px] text-ink font-bold transition-all cursor-pointer"
                         >
                           Trigger Test
                         </button>
                       ) : (
                         <button
-                          onClick={() => rearmAlertMutation.mutate(rule.id)}
+                          onClick={() => rearmAlertMutation.mutate(rule.uuid)}
                           className="px-2 py-1 rounded bg-secondary/15 border border-secondary/20 hover:border-secondary text-[10px] text-secondary font-bold transition-all cursor-pointer"
                         >
                           Re-arm Trigger
@@ -228,7 +228,7 @@ export default function AlertCenter() {
                     </td>
                     <td className="text-center">
                       <button
-                        onClick={() => deleteAlertMutation.mutate(rule.id)}
+                        onClick={() => deleteAlertMutation.mutate(rule.uuid)}
                         className="text-muted-text hover:text-danger p-1 rounded transition-colors cursor-pointer"
                         title="Delete alert"
                       >

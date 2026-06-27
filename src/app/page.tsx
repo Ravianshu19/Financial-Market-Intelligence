@@ -73,8 +73,8 @@ export default function Page() {
           </div>
           <div className="flex items-center gap-4">
             <span>Quantra © 2026 · Fused yfinance & XGBoost</span>
-            <a href="#" className="hover:text-ink transition-colors">Privacy</a>
-            <a href="#" className="hover:text-ink transition-colors">Terms</a>
+            <a href="/privacy" className="hover:text-ink transition-colors">Privacy</a>
+            <a href="/terms" className="hover:text-ink transition-colors">Terms</a>
             <a href="#" className="hover:text-ink transition-colors">Status</a>
           </div>
         </div>

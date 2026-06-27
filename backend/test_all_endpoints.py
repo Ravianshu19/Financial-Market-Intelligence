@@ -199,7 +199,7 @@ def run_qa_tests():
         assert resp.status_code == 200, resp.text
         alert = resp.json()
         assert alert["ticker"] == "MSFT"
-        alert_id = alert["id"]
+        alert_uuid = alert["uuid"]
         
         # Get alerts
         resp = client.get("/api/alerts", headers=headers)
@@ -207,12 +207,12 @@ def run_qa_tests():
         assert len(resp.json()) == 1
         
         # Trigger alert
-        resp = client.post(f"/api/alerts/{alert_id}/trigger", headers=headers)
+        resp = client.post(f"/api/alerts/{alert_uuid}/trigger", headers=headers)
         assert resp.status_code == 200, resp.text
         assert resp.json()["alert_status"] == "triggered"
         
         # Delete alert
-        resp = client.delete(f"/api/alerts/{alert_id}", headers=headers)
+        resp = client.delete(f"/api/alerts/{alert_uuid}", headers=headers)
         assert resp.status_code == 200, resp.text
         assert resp.json()["status"] == "ok"
         print("   -> OK")

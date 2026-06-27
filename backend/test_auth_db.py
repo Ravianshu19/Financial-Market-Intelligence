@@ -108,7 +108,7 @@ def test_auth_and_user_isolation():
         # 10. Add alert for User 1
         resp = client.post("/api/alerts", json={"ticker": "TSLA", "condition_type": "price_above", "threshold": 250.0}, headers=headers1)
         assert resp.status_code == 200, resp.text
-        alert_id = resp.json()["id"]
+        alert_uuid = resp.json()["uuid"]
 
         # 11. Fetch alerts for User 1
         resp = client.get("/api/alerts", headers=headers1)
@@ -122,12 +122,12 @@ def test_auth_and_user_isolation():
         assert len(resp.json()) == 0
 
         # 13. Trigger alert for User 1
-        resp = client.post(f"/api/alerts/{alert_id}/trigger", headers=headers1)
+        resp = client.post(f"/api/alerts/{alert_uuid}/trigger", headers=headers1)
         assert resp.status_code == 200, resp.text
         assert resp.json()["alert_status"] == "triggered"
 
         # 14. Delete alert for User 1
-        resp = client.delete(f"/api/alerts/{alert_id}", headers=headers1)
+        resp = client.delete(f"/api/alerts/{alert_uuid}", headers=headers1)
         assert resp.status_code == 200, resp.text
         assert resp.json()["status"] == "ok"
 

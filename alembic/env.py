@@ -33,7 +33,8 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = os.getenv("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
+    from backend.database import DATABASE_URL
+    url = DATABASE_URL
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -52,8 +53,9 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+    from backend.database import DATABASE_URL
     configuration = config.get_section(config.config_ini_section, {})
-    configuration["sqlalchemy.url"] = os.getenv("DATABASE_URL", configuration.get("sqlalchemy.url"))
+    configuration["sqlalchemy.url"] = DATABASE_URL
     
     connect_args = {}
     if configuration["sqlalchemy.url"].startswith("sqlite"):

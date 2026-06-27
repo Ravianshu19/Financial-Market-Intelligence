@@ -33,6 +33,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   });
 
   if (!response.ok) {
+    if (response.status === 503) {
+      if (typeof window !== "undefined" && window.location.pathname !== "/maintenance") {
+        window.location.href = "/maintenance";
+      }
+    }
     let errMsg = "Request failed";
     try {
       const data = await response.json();
@@ -319,6 +324,7 @@ export interface PortfolioResponse {
 
 export interface AlertRule {
   id: number;
+  uuid: string;
   user_id: number;
   ticker: string;
   condition_type: string;
@@ -386,9 +392,9 @@ export const api = {
   getAlerts: () => request<AlertRule[]>("/api/alerts"),
   createAlert: (ticker: string, conditionType: string, threshold: number) => 
     request<AlertRule>("/api/alerts", { method: "POST", body: JSON.stringify({ ticker, condition_type: conditionType, threshold }) }),
-  deleteAlert: (id: number) => request<GenericStatusResponse>(`/api/alerts/${id}`, { method: "DELETE" }),
-  triggerAlert: (id: number) => request<AlertTriggerResponse>(`/api/alerts/${id}/trigger`, { method: "POST" }),
-  rearmAlert: (id: number) => request<AlertTriggerResponse>(`/api/alerts/${id}/rearm`, { method: "POST" }),
+  deleteAlert: (uuid: string) => request<GenericStatusResponse>(`/api/alerts/${uuid}`, { method: "DELETE" }),
+  triggerAlert: (uuid: string) => request<AlertTriggerResponse>(`/api/alerts/${uuid}/trigger`, { method: "POST" }),
+  rearmAlert: (uuid: string) => request<AlertTriggerResponse>(`/api/alerts/${uuid}/rearm`, { method: "POST" }),
 
   // Sentiment & MLOps
   getSentiment: (ticker: string) => request<SentimentResponse>(`/api/sentiment/${encodeURIComponent(ticker)}`),
