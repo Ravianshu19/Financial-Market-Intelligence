@@ -1610,6 +1610,60 @@ def login_json(req: LoginRequest, db: Session = Depends(get_db), _limiter: None 
 def get_me(current_user: models.User = Depends(auth.get_current_user)):
     return current_user
 
+class DeleteAccountRequest(BaseModel):
+    password: str
+
+@app.post("/api/auth/delete-account")
+def delete_account(req: DeleteAccountRequest, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
+    if not auth.verify_password(req.password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Incorrect password. Account deletion aborted.")
+    
+    # Soft delete User
+    now = datetime.now(timezone.utc)
+    current_user.deleted_at = now
+    current_user.updated_at = now
+    current_user.updated_by = current_user.email
+    
+    # Soft delete all watchlists
+    db.query(models.Watchlist).filter(
+        models.Watchlist.user_id == current_user.id,
+        models.Watchlist.deleted_at.is_(None)
+    ).update({
+        models.Watchlist.deleted_at: now,
+        models.Watchlist.updated_by: current_user.email
+    }, synchronize_session=False)
+    
+    # Soft delete all portfolios
+    portfolios = db.query(models.Portfolio).filter(
+        models.Portfolio.user_id == current_user.id,
+        models.Portfolio.deleted_at.is_(None)
+    ).all()
+    for portfolio in portfolios:
+        portfolio.deleted_at = now
+        portfolio.updated_at = now
+        portfolio.updated_by = current_user.email
+        
+        # Soft delete holdings
+        db.query(models.PortfolioHolding).filter(
+            models.PortfolioHolding.portfolio_id == portfolio.id,
+            models.PortfolioHolding.deleted_at.is_(None)
+        ).update({
+            models.PortfolioHolding.deleted_at: now,
+            models.PortfolioHolding.updated_by: current_user.email
+        }, synchronize_session=False)
+        
+    # Soft delete all alert rules
+    db.query(models.AlertRule).filter(
+        models.AlertRule.user_id == current_user.id,
+        models.AlertRule.deleted_at.is_(None)
+    ).update({
+        models.AlertRule.deleted_at: now,
+        models.AlertRule.updated_by: current_user.email
+    }, synchronize_session=False)
+    
+    db.commit()
+    return {"status": "ok", "message": "Account and all associated data soft-deleted successfully."}
+
 # ---------------------------------------------------------------- watchlist endpoints
 @app.get("/api/watchlist")
 def get_watchlist(current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):

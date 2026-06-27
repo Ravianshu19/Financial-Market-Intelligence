@@ -19,6 +19,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    deleted_at = Column(DateTime, nullable=True)
     created_by = Column(String, nullable=True)
     updated_by = Column(String, nullable=True)
 
@@ -33,7 +34,7 @@ class Watchlist(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     uuid = Column(String, unique=True, index=True, default=generate_uuid, nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     ticker = Column(String, index=True, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
@@ -49,7 +50,7 @@ class Portfolio(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     uuid = Column(String, unique=True, index=True, default=generate_uuid, nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String, nullable=False, default="Default Portfolio")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
@@ -66,7 +67,7 @@ class PortfolioHolding(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     uuid = Column(String, unique=True, index=True, default=generate_uuid, nullable=False)
-    portfolio_id = Column(Integer, ForeignKey("portfolios.id", ondelete="CASCADE"), nullable=False)
+    portfolio_id = Column(Integer, ForeignKey("portfolios.id", ondelete="CASCADE"), nullable=False, index=True)
     ticker = Column(String, index=True, nullable=False)
     shares = Column(Float, nullable=False)
     avg_cost = Column(Float, nullable=False)
@@ -84,7 +85,7 @@ class AlertRule(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     uuid = Column(String, unique=True, index=True, default=generate_uuid, nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     ticker = Column(String, index=True, nullable=False)
     condition_type = Column(String, nullable=False)  # e.g., price_above, price_below, rsi_above, rsi_below
     threshold = Column(Float, nullable=False)

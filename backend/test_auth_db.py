@@ -136,7 +136,21 @@ def test_auth_and_user_isolation():
         assert resp.status_code == 200, resp.text
         assert len(resp.json()) == 0
 
-        print("\nSUCCESS: All auth and user-isolation test cases passed!")
+        print("Testing Account Deletion with Re-Authentication...")
+        # 15. Attempt delete account with wrong password (should fail)
+        resp = client.post("/api/auth/delete-account", json={"password": "wrongpassword"}, headers=headers1)
+        assert resp.status_code == 400, resp.text
+
+        # 16. Delete account with correct password (should succeed)
+        resp = client.post("/api/auth/delete-account", json={"password": "password123"}, headers=headers1)
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["status"] == "ok"
+
+        # 17. Verify user cannot authenticate anymore (me route returns 401)
+        resp = client.get("/api/auth/me", headers=headers1)
+        assert resp.status_code == 401, resp.text
+
+        print("\nSUCCESS: All auth, user-isolation, and account deletion test cases passed!")
     finally:
         # Clean up the test database file
         if os.path.exists(TEST_DB_FILE):
