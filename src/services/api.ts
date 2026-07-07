@@ -38,7 +38,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
         window.location.href = "/maintenance";
       }
     }
-    let errMsg = "Request failed";
+    let errMsg = response.status >= 500
+      ? `Server error (HTTP ${response.status}). The backend may be down or outdated — please retry or restart it.`
+      : `Request failed (HTTP ${response.status})`;
     try {
       const data = await response.json();
       errMsg = data.error || data.detail || errMsg;

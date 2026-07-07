@@ -8,6 +8,7 @@ import AuthPage from "@/features/auth/AuthPage";
 import MarketOverview from "@/features/dashboard/MarketOverview";
 import StockAnalysis from "@/features/stock/StockAnalysis";
 import AIAnalyst from "@/features/analyst/AIAnalyst";
+import StockCompare from "@/features/compare/StockCompare";
 import PortfolioEngine from "@/features/portfolio/PortfolioEngine";
 import AlertCenter from "@/features/alerts/AlertCenter";
 import MLOpsRegistry from "@/features/mlops/MLOpsRegistry";
@@ -29,6 +30,8 @@ export default function Page() {
         return <StockAnalysis />;
       case "analyst":
         return <AIAnalyst />;
+      case "compare":
+        return <StockCompare />;
       case "portfolio":
         return <PortfolioEngine />;
       case "alerts":

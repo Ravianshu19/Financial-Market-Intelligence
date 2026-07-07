@@ -11,11 +11,12 @@ import {
   Cpu, 
   TrendingUp, 
   PieChart, 
-  ShieldAlert, 
+  ShieldAlert,
   Database,
   Plus,
   Trash2,
-  Bookmark
+  Bookmark,
+  ArrowLeftRight
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -57,6 +58,7 @@ export default function Sidebar() {
     { id: "overview", label: "Overview", icon: BarChart2 },
     { id: "stock", label: "Stock Analysis", icon: Activity },
     { id: "analyst", label: "AI Analyst", icon: Cpu },
+    { id: "compare", label: "Compare", icon: ArrowLeftRight },
     { id: "portfolio", label: "Portfolio", icon: PieChart },
     { id: "alerts", label: "Active Alerts", icon: ShieldAlert },
     { id: "mlops", label: "MLOps", icon: Database },

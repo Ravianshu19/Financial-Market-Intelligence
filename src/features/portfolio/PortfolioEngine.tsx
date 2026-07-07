@@ -106,6 +106,24 @@ export default function PortfolioEngine() {
   const totalChange = portfolio?.daily_change || 0;
   const totalChangePct = portfolio?.daily_change_pct || 0;
 
+  // ---- Composite risk score (0-100) from vol, tail risk, concentration & beta ----
+  const weights = holdings
+    .map((h) => ({ ticker: h.ticker, w: totalVal > 0 ? (h.market_value / totalVal) * 100 : 0 }))
+    .sort((a, b) => b.w - a.w);
+  const maxWeight = weights[0]?.w ?? (parseFloat(risk.concentration.split(" ")[1]) || 0);
+  const volScore = Math.min((risk.realised_vol * 100) / 40, 1);
+  const varScore = Math.min(Math.abs(risk.var_95 * 100) / 5, 1);
+  const concScore = Math.min(maxWeight / 50, 1);
+  const betaScore = Math.min(Math.abs(risk.beta) / 2, 1);
+  const riskScore = Math.round((volScore * 0.35 + varScore * 0.25 + concScore * 0.25 + betaScore * 0.15) * 100);
+  const riskTone =
+    riskScore < 35
+      ? { label: "Conservative", color: "#00D4AA", chip: "bg-secondary/10 text-secondary border-secondary/10" }
+      : riskScore < 65
+        ? { label: "Balanced", color: "#F5A524", chip: "bg-amber/10 text-amber border-amber/10" }
+        : { label: "Aggressive", color: "#E05555", chip: "bg-danger/10 text-danger border-danger/10" };
+  const barColor = (w: number) => (w > 25 ? "var(--color-danger)" : w > 15 ? "var(--color-amber)" : "var(--color-primary)");
+
   return (
     <div className="space-y-6">
       {/* 1. PORTFOLIO TOP VALUATION SUMMARY */}
@@ -328,10 +346,32 @@ export default function PortfolioEngine() {
             <div className="label text-[9px] text-muted-text font-bold uppercase tracking-widest flex items-center gap-1.5">
               <ShieldAlert className="h-3.5 w-3.5 text-amber" /> Risk Engine
             </div>
-            <span className="chip bg-danger/10 text-danger border border-danger/10 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">
-              Concentrated
+            <span className={`chip border text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${riskTone.chip}`}>
+              {riskTone.label}
             </span>
           </header>
+
+          {/* Composite risk gauge */}
+          <div className="flex items-center justify-center pt-1">
+            <div className="relative">
+              <svg width="150" height="86" viewBox="0 0 150 86">
+                <path d="M 15 78 A 60 60 0 0 1 135 78" fill="none" stroke="#1F1F2B" strokeWidth="10" strokeLinecap="round" />
+                <path
+                  d="M 15 78 A 60 60 0 0 1 135 78"
+                  fill="none"
+                  stroke={riskTone.color}
+                  strokeWidth="10"
+                  strokeLinecap="round"
+                  strokeDasharray={`${(riskScore / 100) * 188.5} 188.5`}
+                  style={{ transition: "stroke-dasharray 0.6s ease" }}
+                />
+              </svg>
+              <div className="absolute inset-x-0 bottom-0 text-center">
+                <div className="text-[22px] font-bold leading-none" style={{ color: riskTone.color }}>{riskScore}</div>
+                <div className="text-[8px] text-muted-text uppercase font-bold tracking-widest">Risk Score / 100</div>
+              </div>
+            </div>
+          </div>
 
           <div className="space-y-3 text-[11px] pt-1">
             {[
@@ -353,6 +393,30 @@ export default function PortfolioEngine() {
               </div>
             ))}
           </div>
+
+          {/* Per-position concentration */}
+          {weights.length > 0 && (
+            <div className="border-t border-line/20 pt-3 space-y-2">
+              <div className="label text-[9px] text-muted-text font-bold uppercase tracking-widest">
+                Concentration by Position
+              </div>
+              {weights.slice(0, 6).map((h) => (
+                <div key={h.ticker} className="space-y-1">
+                  <div className="flex justify-between items-center text-[10px]">
+                    <span className="text-ink font-bold uppercase">{h.ticker}</span>
+                    <span className="text-muted-text">{h.w.toFixed(1)}% of book</span>
+                  </div>
+                  <div className="h-1.5 bg-line rounded-full overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${Math.min(h.w, 100)}%`, backgroundColor: barColor(h.w) }} />
+                  </div>
+                </div>
+              ))}
+              <p className="text-[9px] text-muted-text/80 leading-relaxed pt-1">
+                Positions above <span className="text-amber font-bold">15%</span> raise concentration risk; above{" "}
+                <span className="text-danger font-bold">25%</span> a single earnings miss dominates portfolio P&amp;L.
+              </p>
+            </div>
+          )}
 
           <div className="text-[10px] text-muted-text border-t border-line/20 pt-3 leading-relaxed">
             <span className="text-amber font-bold">Recommendation:</span> {risk.recommendation}

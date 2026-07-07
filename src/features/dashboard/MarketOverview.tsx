@@ -15,6 +15,7 @@ import {
   Bar 
 } from "recharts";
 import { TrendingUp, TrendingDown, RefreshCw, BarChart2, Flame, Grid, Newspaper } from "lucide-react";
+import MorningBriefing from "./MorningBriefing";
 
 export default function MarketOverview() {
   const { setSelectedSymbol, setActiveView, token } = useApp();
@@ -158,6 +159,9 @@ export default function MarketOverview() {
           ))}
         </div>
       </section>
+
+      {/* 1b. AI MORNING BRIEFING */}
+      <MorningBriefing />
 
       {/* 2. AREA CHART & SECTORS ROW */}
       <section className="grid grid-cols-12 gap-6">
