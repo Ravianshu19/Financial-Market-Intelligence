@@ -224,7 +224,7 @@ export default function StockCompare() {
                 <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fill: "#7A7A8C", fontSize: 9, fontFamily: "DM Mono" }} />
                 <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} tick={{ fill: "#7A7A8C", fontSize: 9, fontFamily: "DM Mono" }} />
                 <Tooltip
-                  formatter={(v: number) => `${v >= 0 ? "+" : ""}${v}%`}
+                  formatter={(v) => { const n = Number(v); return `${n >= 0 ? "+" : ""}${n}%`; }}
                   contentStyle={{ backgroundColor: "#0E0E15", borderColor: "#1F1F2B", borderRadius: "8px" }}
                   labelStyle={{ color: "#7A7A8C", fontSize: "10px", fontFamily: "DM Mono" }}
                   itemStyle={{ fontSize: "11px", fontFamily: "DM Mono" }}
