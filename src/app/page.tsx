@@ -11,7 +11,7 @@ import AIAnalyst from "@/features/analyst/AIAnalyst";
 import StockCompare from "@/features/compare/StockCompare";
 import PortfolioEngine from "@/features/portfolio/PortfolioEngine";
 import AlertCenter from "@/features/alerts/AlertCenter";
-import MLOpsRegistry from "@/features/mlops/MLOpsRegistry";
+import MarketInsights from "@/features/insights/MarketInsights";
 
 export default function Page() {
   const { token, activeView } = useApp();
@@ -36,8 +36,8 @@ export default function Page() {
         return <PortfolioEngine />;
       case "alerts":
         return <AlertCenter />;
-      case "mlops":
-        return <MLOpsRegistry />;
+      case "insights":
+        return <MarketInsights />;
       default:
         return <MarketOverview />;
     }

@@ -102,26 +102,6 @@ export interface StockQuote {
   };
 }
 
-export interface MlopsModel {
-  name: string;
-  version: string;
-  stage: string;
-  metric: string;
-  color: string;
-}
-
-export interface DriftItem {
-  run: string;
-  drift: number;
-  isDriftAlert: boolean;
-}
-
-export interface LatencyItem {
-  req: string;
-  latency: number;
-  is_real?: boolean;
-}
-
 export interface SentimentNewsItem {
   title: string;
   publisher: string;
@@ -398,9 +378,6 @@ export const api = {
   triggerAlert: (uuid: string) => request<AlertTriggerResponse>(`/api/alerts/${uuid}/trigger`, { method: "POST" }),
   rearmAlert: (uuid: string) => request<AlertTriggerResponse>(`/api/alerts/${uuid}/rearm`, { method: "POST" }),
 
-  // Sentiment & MLOps
+  // Sentiment
   getSentiment: (ticker: string) => request<SentimentResponse>(`/api/sentiment/${encodeURIComponent(ticker)}`),
-  getMlopsModels: () => request<MlopsModel[]>("/api/mlops/models"),
-  getMlopsDrift: () => request<DriftItem[]>("/api/mlops/drift"),
-  getMlopsLatency: () => request<LatencyItem[]>("/api/mlops/latency"),
 };

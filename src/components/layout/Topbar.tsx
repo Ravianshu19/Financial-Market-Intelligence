@@ -114,12 +114,12 @@ export default function Topbar() {
               Portfolio
             </button>
             <button
-              onClick={() => setActiveView("mlops")}
+              onClick={() => setActiveView("insights")}
               className={`px-3 py-1.5 rounded-md transition-colors ${
-                activeView === "mlops" ? "text-ink bg-card border border-line" : "hover:text-ink"
+                activeView === "insights" ? "text-ink bg-card border border-line" : "hover:text-ink"
               }`}
             >
-              MLOps
+              Insights
             </button>
           </nav>
 

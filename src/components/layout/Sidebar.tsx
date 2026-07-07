@@ -12,7 +12,6 @@ import {
   TrendingUp, 
   PieChart, 
   ShieldAlert,
-  Database,
   Plus,
   Trash2,
   Bookmark,
@@ -61,7 +60,7 @@ export default function Sidebar() {
     { id: "compare", label: "Compare", icon: ArrowLeftRight },
     { id: "portfolio", label: "Portfolio", icon: PieChart },
     { id: "alerts", label: "Active Alerts", icon: ShieldAlert },
-    { id: "mlops", label: "MLOps", icon: Database },
+    { id: "insights", label: "Market Insights", icon: TrendingUp },
   ];
 
   return (
