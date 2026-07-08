@@ -18,7 +18,8 @@ import {
   ArrowLeftRight,
   PiggyBank,
   Layers,
-  Rocket
+  Rocket,
+  Flame
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -59,6 +60,7 @@ export default function Sidebar() {
   const navItems = market === "india"
     ? [
         { id: "overview", label: "India Overview", icon: BarChart2 },
+        { id: "topstocks", label: "Top Stocks", icon: Flame },
         { id: "stock", label: "Stock Analysis", icon: Activity },
         { id: "analyst", label: "AI Analyst", icon: Cpu },
         { id: "compare", label: "Compare", icon: ArrowLeftRight },
@@ -67,12 +69,15 @@ export default function Sidebar() {
         { id: "ipos", label: "IPO Desk", icon: Rocket },
         { id: "portfolio", label: "Portfolio", icon: PieChart },
         { id: "alerts", label: "Active Alerts", icon: ShieldAlert },
+        { id: "insights", label: "Market Insights", icon: TrendingUp },
       ]
     : [
         { id: "overview", label: "Overview", icon: BarChart2 },
+        { id: "topstocks", label: "Top Stocks", icon: Flame },
         { id: "stock", label: "Stock Analysis", icon: Activity },
         { id: "analyst", label: "AI Analyst", icon: Cpu },
         { id: "compare", label: "Compare", icon: ArrowLeftRight },
+        { id: "ipos", label: "IPO Desk", icon: Rocket },
         { id: "portfolio", label: "Portfolio", icon: PieChart },
         { id: "alerts", label: "Active Alerts", icon: ShieldAlert },
         { id: "insights", label: "Market Insights", icon: TrendingUp },

@@ -6,8 +6,8 @@ import { setAuthToken, getAuthToken } from "@/services/api";
 export type Market = "global" | "india";
 
 // Views that only exist in one market mode
-const GLOBAL_ONLY_VIEWS = new Set(["insights"]);
-const INDIA_ONLY_VIEWS = new Set(["funds", "etfs", "ipos"]);
+const GLOBAL_ONLY_VIEWS = new Set<string>([]);
+const INDIA_ONLY_VIEWS = new Set(["funds", "etfs"]);
 
 interface AppContextType {
   selectedSymbol: string;

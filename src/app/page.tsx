@@ -10,6 +10,8 @@ import StockAnalysis from "@/features/stock/StockAnalysis";
 import AIAnalyst from "@/features/analyst/AIAnalyst";
 import StockCompare from "@/features/compare/StockCompare";
 import IndiaOverview from "@/features/india/IndiaOverview";
+import IndiaInsights from "@/features/insights/IndiaInsights";
+import TopStocks from "@/features/stocks/TopStocks";
 import MutualFundsDesk from "@/features/india/MutualFundsDesk";
 import ETFDesk from "@/features/india/ETFDesk";
 import IPODesk from "@/features/india/IPODesk";
@@ -30,6 +32,8 @@ export default function Page() {
     switch (activeView) {
       case "overview":
         return market === "india" ? <IndiaOverview /> : <MarketOverview />;
+      case "topstocks":
+        return <TopStocks />;
       case "stock":
         return <StockAnalysis />;
       case "analyst":
@@ -47,7 +51,7 @@ export default function Page() {
       case "alerts":
         return <AlertCenter />;
       case "insights":
-        return <MarketInsights />;
+        return market === "india" ? <IndiaInsights /> : <MarketInsights />;
       default:
         return market === "india" ? <IndiaOverview /> : <MarketOverview />;
     }
