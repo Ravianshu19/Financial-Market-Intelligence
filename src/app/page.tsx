@@ -9,6 +9,7 @@ import MarketOverview from "@/features/dashboard/MarketOverview";
 import StockAnalysis from "@/features/stock/StockAnalysis";
 import AIAnalyst from "@/features/analyst/AIAnalyst";
 import StockCompare from "@/features/compare/StockCompare";
+import IndiaMarkets from "@/features/india/IndiaMarkets";
 import PortfolioEngine from "@/features/portfolio/PortfolioEngine";
 import AlertCenter from "@/features/alerts/AlertCenter";
 import MarketInsights from "@/features/insights/MarketInsights";
@@ -32,6 +33,8 @@ export default function Page() {
         return <AIAnalyst />;
       case "compare":
         return <StockCompare />;
+      case "india":
+        return <IndiaMarkets />;
       case "portfolio":
         return <PortfolioEngine />;
       case "alerts":

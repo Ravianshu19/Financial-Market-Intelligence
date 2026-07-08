@@ -15,7 +15,8 @@ import {
   Plus,
   Trash2,
   Bookmark,
-  ArrowLeftRight
+  ArrowLeftRight,
+  IndianRupee
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -58,6 +59,7 @@ export default function Sidebar() {
     { id: "stock", label: "Stock Analysis", icon: Activity },
     { id: "analyst", label: "AI Analyst", icon: Cpu },
     { id: "compare", label: "Compare", icon: ArrowLeftRight },
+    { id: "india", label: "India Markets", icon: IndianRupee },
     { id: "portfolio", label: "Portfolio", icon: PieChart },
     { id: "alerts", label: "Active Alerts", icon: ShieldAlert },
     { id: "insights", label: "Market Insights", icon: TrendingUp },
