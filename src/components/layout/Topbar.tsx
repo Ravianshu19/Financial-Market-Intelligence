@@ -1,13 +1,25 @@
 "use client";
 
 import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueries } from "@tanstack/react-query";
 import { api } from "@/services/api";
 import { useApp } from "@/context/AppContext";
-import { Search, Bell, LogOut, Activity, User, TrendingUp, TrendingDown } from "lucide-react";
+import { Search, Bell, LogOut, TrendingUp, TrendingDown } from "lucide-react";
+
+// Symbols behind the India-mode marquee (display label → yfinance ticker)
+const INDIA_TICKER = [
+  { label: "NIFTY", ticker: "^NSEI" },
+  { label: "SENSEX", ticker: "^BSESN" },
+  { label: "BANKNIFTY", ticker: "^NSEBANK" },
+  { label: "USD/INR", ticker: "INR=X" },
+  { label: "RELIANCE", ticker: "RELIANCE.NS" },
+  { label: "TCS", ticker: "TCS.NS" },
+  { label: "HDFCBANK", ticker: "HDFCBANK.NS" },
+  { label: "INFY", ticker: "INFY.NS" },
+];
 
 export default function Topbar() {
-  const { selectedSymbol, setSelectedSymbol, activeView, setActiveView, logout, token } = useApp();
+  const { selectedSymbol, setSelectedSymbol, activeView, setActiveView, market, setMarket, logout, token } = useApp();
   const [searchInput, setSearchInput] = useState("");
 
   // Get user profile info
@@ -17,11 +29,22 @@ export default function Topbar() {
     enabled: !!token,
   });
 
-  // Get live ticker bar data
+  // Global marquee comes from the backend ticker endpoint
   const { data: tickerData } = useQuery({
     queryKey: ["tickerStrip"],
     queryFn: () => api.getTickerStrip(),
-    refetchInterval: 60000, // Refresh every 1 minute
+    refetchInterval: 60000,
+    enabled: market === "global",
+  });
+
+  // India marquee is assembled client-side from live quotes
+  const indiaQuotes = useQueries({
+    queries: INDIA_TICKER.map((t) => ({
+      queryKey: ["inQuote", t.ticker],
+      queryFn: () => api.getQuote(t.ticker),
+      refetchInterval: 120000,
+      enabled: market === "india",
+    })),
   });
 
   // Get alerts to check triggered rules
@@ -29,7 +52,7 @@ export default function Topbar() {
     queryKey: ["alerts", token],
     queryFn: () => api.getAlerts(),
     enabled: !!token,
-    refetchInterval: 15000, // Refresh every 15s to catch alerts
+    refetchInterval: 15000,
   });
 
   const triggeredCount = alerts?.filter((a) => a.status === "triggered").length || 0;
@@ -43,27 +66,42 @@ export default function Topbar() {
     }
   };
 
-  // Default mock ticker items to display if loading or API fails
-  const defaultTickerItems = [
-    { sym: "SPX", price: 5824.12, chg_pct: 0.54, up: true },
-    { sym: "NDX", price: 20318.77, chg_pct: 0.83, up: true },
-    { sym: "DJI", price: 42610.2, chg_pct: 0.21, up: true },
-    { sym: "RUT", price: 2189.04, chg_pct: -0.32, up: false },
-    { sym: "VIX", price: 13.45, chg_pct: -2.1, up: false },
-    { sym: "BTC", price: 103420, chg_pct: 3.27, up: true },
-    { sym: "ETH", price: 3884, chg_pct: -0.49, up: false },
-    { sym: "GOLD", price: 2684.1, chg_pct: 0.72, up: true },
+  // Default mock items shown while a feed loads
+  const defaultGlobal = [
+    { sym: "SPX", ticker: "^GSPC", price: 5824.12, chg_pct: 0.54, up: true },
+    { sym: "NDX", ticker: "^NDX", price: 20318.77, chg_pct: 0.83, up: true },
+    { sym: "DJI", ticker: "^DJI", price: 42610.2, chg_pct: 0.21, up: true },
+    { sym: "RUT", ticker: "^RUT", price: 2189.04, chg_pct: -0.32, up: false },
+    { sym: "VIX", ticker: "^VIX", price: 13.45, chg_pct: -2.1, up: false },
+    { sym: "BTC", ticker: "BTC-USD", price: 103420, chg_pct: 3.27, up: true },
+    { sym: "ETH", ticker: "ETH-USD", price: 3884, chg_pct: -0.49, up: false },
+    { sym: "GOLD", ticker: "GC=F", price: 2684.1, chg_pct: 0.72, up: true },
+  ];
+  const defaultIndia = [
+    { sym: "NIFTY", ticker: "^NSEI", price: 24380.5, chg_pct: 0.42, up: true },
+    { sym: "SENSEX", ticker: "^BSESN", price: 79820.3, chg_pct: 0.38, up: true },
+    { sym: "BANKNIFTY", ticker: "^NSEBANK", price: 52240.1, chg_pct: -0.21, up: false },
+    { sym: "USD/INR", ticker: "INR=X", price: 85.6, chg_pct: 0.1, up: true },
   ];
 
-  const tickerItems = tickerData?.items || defaultTickerItems;
+  const tickerItems =
+    market === "india"
+      ? (() => {
+          const live = INDIA_TICKER.map((t, i) => {
+            const q = indiaQuotes[i]?.data;
+            return q ? { sym: t.label, ticker: t.ticker, price: q.price, chg_pct: q.change_pct, up: q.change_pct >= 0 } : null;
+          }).filter((x): x is NonNullable<typeof x> => x !== null);
+          return live.length > 0 ? live : defaultIndia;
+        })()
+      : (tickerData?.items || defaultGlobal).map((it) => ({ ticker: it.sym, ...it }));
 
   return (
     <div className="w-full">
       {/* MAIN TOPBAR */}
       <header className="sticky top-0 z-40 backdrop-blur-md bg-bg/85 border-b border-line">
-        <div className="max-w-[1480px] mx-auto px-6 h-14 flex items-center gap-6">
+        <div className="max-w-[1480px] mx-auto px-6 h-14 flex items-center gap-5">
           {/* LOGO */}
-          <div 
+          <div
             onClick={() => setActiveView("overview")}
             className="flex items-center gap-2 cursor-pointer select-none"
           >
@@ -74,13 +112,30 @@ export default function Topbar() {
             <span className="font-display text-[19px] tracking-tight font-extrabold">
               Quantra<span className="text-primary">.</span>
             </span>
-            <span className="chip hidden sm:inline-flex bg-line text-muted-text text-[10px] px-1.5 py-0.5 rounded-full border border-line ml-1">
-              v3.0 · pro
-            </span>
+          </div>
+
+          {/* MARKET MODE SWITCH */}
+          <div className="flex items-center rounded-lg border border-line bg-card overflow-hidden text-[11px] font-mono shrink-0">
+            <button
+              onClick={() => setMarket("global")}
+              className={`px-2.5 py-1.5 transition-colors cursor-pointer ${
+                market === "global" ? "bg-primary/15 text-primary font-bold" : "text-muted-text hover:text-ink"
+              }`}
+            >
+              🌐 Global
+            </button>
+            <button
+              onClick={() => setMarket("india")}
+              className={`px-2.5 py-1.5 transition-colors cursor-pointer border-l border-line ${
+                market === "india" ? "bg-amber/15 text-amber font-bold" : "text-muted-text hover:text-ink"
+              }`}
+            >
+              🇮🇳 India
+            </button>
           </div>
 
           {/* HORIZONTAL NAV */}
-          <nav className="hidden md:flex items-center gap-1 text-[12px] text-muted-text">
+          <nav className="hidden lg:flex items-center gap-1 text-[12px] text-muted-text">
             <button
               onClick={() => setActiveView("overview")}
               className={`px-3 py-1.5 rounded-md transition-colors ${
@@ -95,7 +150,7 @@ export default function Topbar() {
                 activeView === "stock" ? "text-ink bg-card border border-line" : "hover:text-ink"
               }`}
             >
-              Analysis ({selectedSymbol})
+              Analysis ({selectedSymbol.replace(".NS", "")})
             </button>
             <button
               onClick={() => setActiveView("analyst")}
@@ -113,23 +168,34 @@ export default function Topbar() {
             >
               Portfolio
             </button>
-            <button
-              onClick={() => setActiveView("insights")}
-              className={`px-3 py-1.5 rounded-md transition-colors ${
-                activeView === "insights" ? "text-ink bg-card border border-line" : "hover:text-ink"
-              }`}
-            >
-              Insights
-            </button>
+            {market === "global" ? (
+              <button
+                onClick={() => setActiveView("insights")}
+                className={`px-3 py-1.5 rounded-md transition-colors ${
+                  activeView === "insights" ? "text-ink bg-card border border-line" : "hover:text-ink"
+                }`}
+              >
+                Insights
+              </button>
+            ) : (
+              <button
+                onClick={() => setActiveView("funds")}
+                className={`px-3 py-1.5 rounded-md transition-colors ${
+                  activeView === "funds" ? "text-ink bg-card border border-line" : "hover:text-ink"
+                }`}
+              >
+                Funds
+              </button>
+            )}
           </nav>
 
           {/* SEARCH & CONTROLS */}
           <div className="ml-auto flex items-center gap-4">
             {/* Search Input */}
-            <form onSubmit={handleSearchSubmit} className="hidden md:flex items-center gap-2 bg-card border border-line rounded-md px-3 py-1 w-[260px] focus-within:border-primary/50 transition-colors">
+            <form onSubmit={handleSearchSubmit} className="hidden md:flex items-center gap-2 bg-card border border-line rounded-md px-3 py-1 w-[230px] focus-within:border-primary/50 transition-colors">
               <Search className="h-3.5 w-3.5 text-muted-text" />
               <input
-                placeholder="Search symbol (e.g. AAPL, TSLA)..."
+                placeholder={market === "india" ? "Search (e.g. RELIANCE.NS)..." : "Search symbol (e.g. AAPL)..."}
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 className="bg-transparent outline-none flex-1 text-[11px] placeholder:text-muted-text text-ink font-mono"
@@ -145,7 +211,7 @@ export default function Topbar() {
             </div>
 
             {/* ALERTS NOTIFICATION BELL */}
-            <button 
+            <button
               onClick={() => setActiveView("alerts")}
               className="relative p-1.5 rounded-md border border-line hover:bg-card text-ink transition-colors cursor-pointer"
             >
@@ -163,16 +229,16 @@ export default function Topbar() {
                 <div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary to-secondary grid place-items-center text-[10px] text-bg font-extrabold uppercase">
                   {userProfile?.email ? userProfile.email.slice(0, 2) : "US"}
                 </div>
-                <div className="hidden lg:block text-left">
+                <div className="hidden xl:block text-left">
                   <div className="text-[11px] text-ink max-w-[120px] truncate leading-tight font-medium">
                     {userProfile?.email || "User Account"}
                   </div>
                   <div className="text-[9px] text-muted-text leading-tight uppercase tracking-wider font-semibold">
-                    Quant · Pro
+                    {market === "india" ? "NSE · BSE" : "Quant · Pro"}
                   </div>
                 </div>
               </div>
-              
+
               <button
                 onClick={logout}
                 title="Log Out"
@@ -190,9 +256,11 @@ export default function Topbar() {
         <div className="ticker-animation whitespace-nowrap inline-flex gap-8 text-[11px] font-mono">
           {/* Double map to make the marquee scroll smoothly without gaps */}
           {tickerItems.concat(tickerItems).map((it, idx) => (
-            <span key={idx} className="inline-flex items-center gap-2 cursor-pointer" onClick={() => { setSelectedSymbol(it.sym); setActiveView("stock"); }}>
+            <span key={idx} className="inline-flex items-center gap-2 cursor-pointer" onClick={() => { setSelectedSymbol(it.ticker || it.sym); setActiveView("stock"); }}>
               <span className="text-muted-text uppercase font-semibold">{it.sym}</span>
-              <span className="text-ink font-medium">{it.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <span className="text-ink font-medium">
+                {market === "india" ? "₹" : ""}{it.price.toLocaleString(market === "india" ? "en-IN" : undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
               <span className={`inline-flex items-center text-[10px] font-bold ${it.up ? "text-secondary" : "text-danger"}`}>
                 {it.up ? <TrendingUp className="h-3 w-3 mr-0.5 inline" /> : <TrendingDown className="h-3 w-3 mr-0.5 inline" />}
                 {it.chg_pct >= 0 ? "+" : ""}{it.chg_pct.toFixed(2)}%

@@ -152,7 +152,7 @@ export default function StockAnalysis() {
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="font-display text-[21px] font-bold text-ink">{quote?.name || selectedSymbol}</h3>
               <span className="chip bg-line text-muted-text text-[9px] px-1.5 py-0.2 rounded border border-line">
-                {selectedSymbol} · NASDAQ
+                {selectedSymbol} · {selectedSymbol.endsWith(".NS") ? "NSE" : selectedSymbol.endsWith(".BO") ? "BSE" : "NASDAQ"}
               </span>
               <span className="chip bg-secondary/15 text-secondary text-[9px] px-1.5 py-0.2 rounded border border-secondary/10 font-bold">
                 AI SCORE: {indicators?.latest?.rsi ? Math.round(50 + (60 - indicators.latest.rsi) * 0.8) : 87}

@@ -16,11 +16,13 @@ import {
   Trash2,
   Bookmark,
   ArrowLeftRight,
-  IndianRupee
+  PiggyBank,
+  Layers,
+  Rocket
 } from "lucide-react";
 
 export default function Sidebar() {
-  const { selectedSymbol, setSelectedSymbol, activeView, setActiveView, token } = useApp();
+  const { selectedSymbol, setSelectedSymbol, activeView, setActiveView, market, token } = useApp();
   const [newSymbol, setNewSymbol] = useState("");
   const queryClient = useQueryClient();
 
@@ -54,16 +56,27 @@ export default function Sidebar() {
     }
   };
 
-  const navItems = [
-    { id: "overview", label: "Overview", icon: BarChart2 },
-    { id: "stock", label: "Stock Analysis", icon: Activity },
-    { id: "analyst", label: "AI Analyst", icon: Cpu },
-    { id: "compare", label: "Compare", icon: ArrowLeftRight },
-    { id: "india", label: "India Markets", icon: IndianRupee },
-    { id: "portfolio", label: "Portfolio", icon: PieChart },
-    { id: "alerts", label: "Active Alerts", icon: ShieldAlert },
-    { id: "insights", label: "Market Insights", icon: TrendingUp },
-  ];
+  const navItems = market === "india"
+    ? [
+        { id: "overview", label: "India Overview", icon: BarChart2 },
+        { id: "stock", label: "Stock Analysis", icon: Activity },
+        { id: "analyst", label: "AI Analyst", icon: Cpu },
+        { id: "compare", label: "Compare", icon: ArrowLeftRight },
+        { id: "funds", label: "Mutual Funds", icon: PiggyBank },
+        { id: "etfs", label: "ETFs", icon: Layers },
+        { id: "ipos", label: "IPO Desk", icon: Rocket },
+        { id: "portfolio", label: "Portfolio", icon: PieChart },
+        { id: "alerts", label: "Active Alerts", icon: ShieldAlert },
+      ]
+    : [
+        { id: "overview", label: "Overview", icon: BarChart2 },
+        { id: "stock", label: "Stock Analysis", icon: Activity },
+        { id: "analyst", label: "AI Analyst", icon: Cpu },
+        { id: "compare", label: "Compare", icon: ArrowLeftRight },
+        { id: "portfolio", label: "Portfolio", icon: PieChart },
+        { id: "alerts", label: "Active Alerts", icon: ShieldAlert },
+        { id: "insights", label: "Market Insights", icon: TrendingUp },
+      ];
 
   return (
     <aside className="w-full lg:w-[220px] shrink-0">
@@ -91,7 +104,7 @@ export default function Sidebar() {
                   <span>{item.label}</span>
                   {item.id === "stock" && (
                     <span className="chip bg-primary/10 text-primary text-[9px] px-1 py-0.2 rounded border border-primary/10 ml-auto font-mono">
-                      {selectedSymbol}
+                      {selectedSymbol.replace(".NS", "")}
                     </span>
                   )}
                 </button>

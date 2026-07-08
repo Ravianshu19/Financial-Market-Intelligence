@@ -34,10 +34,12 @@ function fmtCap(mc: number): string {
 }
 
 export default function StockCompare() {
-  const { selectedSymbol } = useApp();
-  const [tickers, setTickers] = useState<string[]>(() =>
-    [...new Set([selectedSymbol || "NVDA", "AAPL"])].slice(0, MAX_TICKERS)
-  );
+  const { selectedSymbol, market } = useApp();
+  const [tickers, setTickers] = useState<string[]>(() => {
+    const first = selectedSymbol || (market === "india" ? "RELIANCE.NS" : "NVDA");
+    const second = market === "india" ? (first === "TCS.NS" ? "INFY.NS" : "TCS.NS") : (first === "AAPL" ? "MSFT" : "AAPL");
+    return [...new Set([first, second])].slice(0, MAX_TICKERS);
+  });
   const [input, setInput] = useState("");
   const [period, setPeriod] = useState("6mo");
 

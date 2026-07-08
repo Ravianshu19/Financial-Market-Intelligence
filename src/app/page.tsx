@@ -9,13 +9,16 @@ import MarketOverview from "@/features/dashboard/MarketOverview";
 import StockAnalysis from "@/features/stock/StockAnalysis";
 import AIAnalyst from "@/features/analyst/AIAnalyst";
 import StockCompare from "@/features/compare/StockCompare";
-import IndiaMarkets from "@/features/india/IndiaMarkets";
+import IndiaOverview from "@/features/india/IndiaOverview";
+import MutualFundsDesk from "@/features/india/MutualFundsDesk";
+import ETFDesk from "@/features/india/ETFDesk";
+import IPODesk from "@/features/india/IPODesk";
 import PortfolioEngine from "@/features/portfolio/PortfolioEngine";
 import AlertCenter from "@/features/alerts/AlertCenter";
 import MarketInsights from "@/features/insights/MarketInsights";
 
 export default function Page() {
-  const { token, activeView } = useApp();
+  const { token, activeView, market } = useApp();
 
   // 1. If unauthenticated, redirect to Vulnora-styled auth page
   if (!token) {
@@ -26,15 +29,19 @@ export default function Page() {
   const renderActiveView = () => {
     switch (activeView) {
       case "overview":
-        return <MarketOverview />;
+        return market === "india" ? <IndiaOverview /> : <MarketOverview />;
       case "stock":
         return <StockAnalysis />;
       case "analyst":
         return <AIAnalyst />;
       case "compare":
         return <StockCompare />;
-      case "india":
-        return <IndiaMarkets />;
+      case "funds":
+        return <MutualFundsDesk />;
+      case "etfs":
+        return <ETFDesk />;
+      case "ipos":
+        return <IPODesk />;
       case "portfolio":
         return <PortfolioEngine />;
       case "alerts":
@@ -42,7 +49,7 @@ export default function Page() {
       case "insights":
         return <MarketInsights />;
       default:
-        return <MarketOverview />;
+        return market === "india" ? <IndiaOverview /> : <MarketOverview />;
     }
   };
 
@@ -63,7 +70,7 @@ export default function Page() {
         <Sidebar />
 
         {/* WORKSPACE VIEWS */}
-        <section className="flex-1 min-w-0">
+        <section key={market} className="flex-1 min-w-0">
           {renderActiveView()}
         </section>
       </main>
