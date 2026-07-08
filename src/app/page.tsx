@@ -12,6 +12,7 @@ import StockCompare from "@/features/compare/StockCompare";
 import IndiaOverview from "@/features/india/IndiaOverview";
 import IndiaInsights from "@/features/insights/IndiaInsights";
 import TopStocks from "@/features/stocks/TopStocks";
+import AssetExplorer from "@/features/explore/AssetExplorer";
 import MutualFundsDesk from "@/features/india/MutualFundsDesk";
 import ETFDesk from "@/features/india/ETFDesk";
 import IPODesk from "@/features/india/IPODesk";
@@ -34,6 +35,8 @@ export default function Page() {
         return market === "india" ? <IndiaOverview /> : <MarketOverview />;
       case "topstocks":
         return <TopStocks />;
+      case "explore":
+        return <AssetExplorer />;
       case "stock":
         return <StockAnalysis />;
       case "analyst":

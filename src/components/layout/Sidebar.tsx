@@ -19,7 +19,8 @@ import {
   PiggyBank,
   Layers,
   Rocket,
-  Flame
+  Flame,
+  Database
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -60,6 +61,7 @@ export default function Sidebar() {
   const navItems = market === "india"
     ? [
         { id: "overview", label: "India Overview", icon: BarChart2 },
+        { id: "explore", label: "Explore All", icon: Database },
         { id: "topstocks", label: "Top Stocks", icon: Flame },
         { id: "stock", label: "Stock Analysis", icon: Activity },
         { id: "analyst", label: "AI Analyst", icon: Cpu },
@@ -73,6 +75,7 @@ export default function Sidebar() {
       ]
     : [
         { id: "overview", label: "Overview", icon: BarChart2 },
+        { id: "explore", label: "Explore All", icon: Database },
         { id: "topstocks", label: "Top Stocks", icon: Flame },
         { id: "stock", label: "Stock Analysis", icon: Activity },
         { id: "analyst", label: "AI Analyst", icon: Cpu },
